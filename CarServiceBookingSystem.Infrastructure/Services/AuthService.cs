@@ -90,8 +90,7 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        var user = await _userManager.Users
-            .FirstOrDefaultAsync(x => x.Email == request.Email);
+        var user = await _userManager.FindByEmailAsync(request.Email);
 
         if (user == null)
         {

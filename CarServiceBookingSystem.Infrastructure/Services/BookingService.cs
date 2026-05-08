@@ -13,15 +13,17 @@ public class BookingService : IBookingService
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IBackgroundJobService _backgroundJobService;
+    private readonly IEmailService _emailService;
 
     public BookingService(
         ApplicationDbContext context,
-        ICurrentUserService currentUserService, IBackgroundJobService backgroundJobService)
+        ICurrentUserService currentUserService, IBackgroundJobService backgroundJobService, IEmailService emailService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _backgroundJobService = backgroundJobService;
-    }
+        _emailService = emailService;
+    }               
 
     public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request)
     {

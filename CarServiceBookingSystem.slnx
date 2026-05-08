@@ -3,8 +3,13 @@
     <File Path=".gitignore" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Solution Items/.github/" />
+  <Folder Name="/Solution Items/.github/workflows/">
+    <File Path="dotnet.yml" />
+  </Folder>
   <Project Path="CarServiceBookingSystem.API/CarServiceBookingSystem.API.csproj" />
   <Project Path="CarServiceBookingSystem.Application/CarServiceBookingSystem.Application.csproj" />
   <Project Path="CarServiceBookingSystem.Domain/CarServiceBookingSystem.Domain.csproj" />
   <Project Path="CarServiceBookingSystem.Infrastructure/CarServiceBookingSystem.Infrastructure.csproj" />
+  <Project Path="CarServiceBookingSystem.Tests/CarServiceBookingSystem.Tests.csproj" Id="7e0bc40e-bfe6-4a17-b493-d32578bb2daa" />
 </Solution>
