@@ -33,3 +33,8 @@ publish/
 
 # Environment
 .env
+
+# Tests
+TestResults/
+CoverageReport/
+coverage.cobertura.xml
