@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="CarServiceBookingSystem.API/CarServiceBookingSystem.API.csproj" />
+  <Project Path="CarServiceBookingSystem.Application/CarServiceBookingSystem.Application.csproj" />
+  <Project Path="CarServiceBookingSystem.Domain/CarServiceBookingSystem.Domain.csproj" />
+  <Project Path="CarServiceBookingSystem.Infrastructure/CarServiceBookingSystem.Infrastructure.csproj" />
+</Solution>
