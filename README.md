@@ -1,14 +1,14 @@
 # Car Service Booking System API
 
-A production-ready backend API built with ASP.NET Core and Clean Architecture for managing car service bookings, payments, user vehicles, and service operations.
+A production-ready backend API built with ASP.NET Core and Clean Architecture for managing car service bookings, user vehicles, payments, notifications, and service operations.
 
 ---
 
 # Overview
 
-This project is a scalable and maintainable backend system designed for car service businesses and SaaS platforms.
+This project is designed as a scalable SaaS-ready backend system for car service businesses.
 
-The system provides:
+The API provides:
 
 - Secure authentication and authorization
 - Vehicle management
@@ -16,9 +16,10 @@ The system provides:
 - Stripe payment integration
 - Email notifications
 - Background job processing
-- Admin management features
 - Caching and pagination
-- Audit logging and soft delete support
+- Soft delete and audit tracking
+- Docker support
+- Automated testing and CI/CD support
 
 ---
 
@@ -44,7 +45,7 @@ The system provides:
 - Stripe PaymentIntent API
 - Stripe Webhooks
 
-## Background Processing
+## Background Jobs
 
 - Hangfire
 - SMTP Email Service
@@ -53,6 +54,14 @@ The system provides:
 
 - FluentValidation
 - Serilog
+
+## Testing & DevOps
+
+- xUnit
+- Moq
+- FluentAssertions
+- GitHub Actions
+- Docker & Docker Compose
 
 ## Documentation & Utilities
 
@@ -69,13 +78,14 @@ CarServiceBookingSystem.Domain
 CarServiceBookingSystem.Application
 CarServiceBookingSystem.Infrastructure
 CarServiceBookingSystem.API
+CarServiceBookingSystem.Tests
 ```
 
 ---
 
 # Architecture
 
-The project follows Clean Architecture principles:
+The project follows Clean Architecture principles.
 
 ## Domain Layer
 
@@ -95,14 +105,14 @@ Contains:
 ## Infrastructure Layer
 
 Contains:
-- Database access
-- Identity implementation
-- JWT generation
+- EF Core
+- Identity
+- JWT implementation
 - Stripe integration
 - Hangfire jobs
 - Email services
 - Caching
-- External services
+- External integrations
 
 ## API Layer
 
@@ -112,6 +122,14 @@ Contains:
 - Filters
 - Swagger configuration
 - API versioning
+
+## Tests Layer
+
+Contains:
+- Unit tests
+- Validation tests
+- Service tests
+- Authentication tests
 
 ---
 
@@ -128,14 +146,15 @@ Contains:
 
 ## User Vehicles
 
-- Add vehicle
-- Update vehicle
-- Delete vehicle
-- Get user vehicles
+Users can:
+- Add vehicles
+- Update vehicles
+- Delete vehicles
+- View personal vehicles
 
 ## Vehicle Lookup System
 
-Dynamic dropdown flow:
+Dynamic lookup flow:
 
 ```txt
 Brand → Model → Year → Trim
@@ -144,12 +163,12 @@ Brand → Model → Year → Trim
 ## Services Management
 
 Admin capabilities:
-- Create service
-- Update service
-- Delete service
+- Create services
+- Update services
+- Delete services
 
 Public capabilities:
-- View available services
+- View services
 - Pagination
 - Filtering
 - Sorting
@@ -157,7 +176,7 @@ Public capabilities:
 ## Booking System
 
 Users can:
-- Create booking
+- Create bookings
 - View personal bookings
 
 Admins can:
@@ -175,7 +194,7 @@ Admins can:
 ## Email Notifications
 
 - Booking confirmation emails
-- Background email jobs using Hangfire
+- Background email processing with Hangfire
 
 ## System Features
 
@@ -207,7 +226,7 @@ Tracks:
 
 ---
 
-# Getting Started
+# Local Development Setup
 
 ## 1. Clone Repository
 
@@ -243,8 +262,7 @@ appsettings.json
   "Secret": "YOUR_SECRET_KEY",
   "Issuer": "CarServiceBookingSystem",
   "Audience": "CarServiceBookingSystemUsers",
-  "AccessTokenExpirationMinutes": 60,
-  "RefreshTokenExpirationDays": 7
+  "ExpiryMinutes": 60
 }
 ```
 
@@ -304,6 +322,68 @@ https://localhost:xxxx/swagger
 
 ---
 
+# Docker Setup
+
+## Run API + SQL Server
+
+```bash
+docker compose up --build
+```
+
+---
+
+## Swagger
+
+```txt
+http://localhost:8080/swagger
+```
+
+---
+
+## Hangfire Dashboard
+
+```txt
+http://localhost:8080/hangfire
+```
+
+---
+
+## SQL Server Connection (SSMS)
+
+```txt
+Server: localhost,14333
+Authentication: SQL Server Authentication
+Login: sa
+Password: YourStrong!Passw0rd
+Database: CarServiceBookingDb
+```
+
+---
+
+## Stop Containers
+
+```bash
+docker compose down
+```
+
+---
+
+## Stop Containers and Delete Database
+
+```bash
+docker compose down -v
+```
+
+---
+
+## Notes
+
+- EF Core migrations run automatically on startup
+- Docker SQL Server is separate from LocalDB or local SQL Server installations
+- Docker uses persistent volumes for database storage
+
+---
+
 # Default Admin Account
 
 ```txt
@@ -318,8 +398,10 @@ Password: Admin123!
 ## Start Stripe Webhook Listener
 
 ```bash
-stripe listen --events payment_intent.succeeded,payment_intent.payment_failed --forward-to https://localhost:xxxx/api/v1/stripe-webhook
+stripe listen --events payment_intent.succeeded,payment_intent.payment_failed --forward-to http://localhost:8080/api/v1/stripe-webhook
 ```
+
+---
 
 ## Stripe Test Card
 
@@ -388,12 +470,33 @@ POST /api/v1/stripe-webhook
 
 ---
 
-# Background Jobs Dashboard
+# Unit Testing
 
-Hangfire dashboard:
+Run tests:
+
+```bash
+dotnet test
+```
+
+Generate coverage:
+
+```bash
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+---
+
+# CI/CD
+
+GitHub Actions automatically:
+- Restore packages
+- Build solution
+- Run unit tests
+
+Workflow file:
 
 ```txt
-https://localhost:xxxx/hangfire
+.github/workflows/dotnet.yml
 ```
 
 ---
@@ -411,17 +514,49 @@ Logs/log-yyyyMMdd.txt
 # Validation
 
 Validation is implemented using:
-
 - FluentValidation
 - Custom validation filters
 - Centralized API responses
 
 ---
 
+# Security Notes
+
+## Never Commit
+
+Do not commit:
+- Stripe secret keys
+- JWT secrets
+- SMTP passwords
+- Production connection strings
+
+Use:
+- User Secrets
+- Environment Variables
+- Azure Key Vault
+- Secure secret storage
+
+---
+
+# Future Improvements
+
+- SignalR real-time notifications
+- Redis distributed caching
+- Integration tests
+- Docker production optimization
+- Kubernetes deployment
+- Mobile app integration
+- File upload support
+- Dashboard analytics
+- Multi-tenant support
+- Full CI/CD deployment pipeline
+
+---
 
 # Author
 
 Mahmoud Almahmoud
 
 Backend Developer (.NET / ASP.NET Core)
+
 Abu Dhabi, UAE
