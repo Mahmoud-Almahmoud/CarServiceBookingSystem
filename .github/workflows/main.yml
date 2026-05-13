@@ -30,3 +30,6 @@ jobs:
 
       - name: Run integration tests
         run: dotnet test CarServiceBookingSystem.IntegrationTests --no-build --configuration Release --verbosity normal
+
+      - name: Docker build API
+        run: docker build -f CarServiceBookingSystem.API/Dockerfile -t car-service-booking-api .
