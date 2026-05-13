@@ -25,5 +25,11 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Run unit tests
+        run: dotnet test CarServiceBookingSystem.Tests --no-build --configuration Release --verbosity normal
+
+      - name: Run integration tests
+        run: dotnet test CarServiceBookingSystem.IntegrationTests --no-build --configuration Release --verbosity normal
+
+      - name: Docker build API
+        run: docker build -f CarServiceBookingSystem.API/Dockerfile -t car-service-booking-api .
