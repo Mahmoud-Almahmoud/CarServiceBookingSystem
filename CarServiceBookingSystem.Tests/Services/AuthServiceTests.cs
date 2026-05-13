@@ -76,6 +76,10 @@ public class AuthServiceTests
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
 
         userManagerMock
+    .Setup(x => x.GenerateEmailConfirmationTokenAsync(It.IsAny<ApplicationUser>()))
+    .ReturnsAsync("email-confirmation-token");
+
+        userManagerMock
             .Setup(x => x.FindByEmailAsync("test@test.com"))
             .ReturnsAsync((ApplicationUser?)null);
 
@@ -91,6 +95,7 @@ public class AuthServiceTests
             .Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(new List<string> { "User" });
 
+
         var tokenServiceMock = new Mock<ITokenService>();
 
         tokenServiceMock
@@ -100,6 +105,7 @@ public class AuthServiceTests
         tokenServiceMock
             .Setup(x => x.GenerateRefreshToken())
             .Returns("refresh-token");
+
 
         var httpContextAccessor = new HttpContextAccessor
         {
@@ -204,8 +210,11 @@ public class AuthServiceTests
         userManagerMock
             .Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(new List<string> { "User" });
+        userManagerMock
+    .Setup(x => x.IsEmailConfirmedAsync(user))
+    .ReturnsAsync(true);
 
-        
+
 
         var tokenServiceMock = new Mock<ITokenService>();
 
@@ -765,6 +774,9 @@ public class AuthServiceTests
         userManagerMock
             .Setup(x => x.IsLockedOutAsync(user))
             .ReturnsAsync(true);
+        userManagerMock
+    .Setup(x => x.IsEmailConfirmedAsync(user))
+    .ReturnsAsync(true);
 
         var tokenServiceMock = new Mock<ITokenService>();
 
@@ -821,6 +833,9 @@ public class AuthServiceTests
         userManagerMock
             .Setup(x => x.AccessFailedAsync(user))
             .ReturnsAsync(IdentityResult.Success);
+        userManagerMock
+    .Setup(x => x.IsEmailConfirmedAsync(user))
+    .ReturnsAsync(true);
 
         var tokenServiceMock = new Mock<ITokenService>();
 

@@ -1,17 +1,22 @@
-﻿using FluentAssertions;
+﻿using CarServiceBookingSystem.Infrastructure.Persistence;
+using FluentAssertions;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarServiceBookingSystem.IntegrationTests;
 
 public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public AuthIntegrationTests(CustomWebApplicationFactory factory)
     {
-        factory.SeedRolesAsync().GetAwaiter().GetResult();
+        _factory = factory;
+        _factory.SeedRolesAsync().GetAwaiter().GetResult();
         _client = factory.CreateClient();
     }
 
@@ -51,6 +56,17 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register", registerRequest);
         registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var user = await context.Users
+            .FirstAsync(x => x.Email == email);
+
+        user.EmailConfirmed = true;
+
+        await context.SaveChangesAsync();
 
         var loginRequest = new
         {
@@ -157,6 +173,17 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
             registerRequest);
 
         registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var user = await context.Users
+            .FirstAsync(x => x.Email == email);
+
+        user.EmailConfirmed = true;
+
+        await context.SaveChangesAsync();
 
         var firstLoginResponse = await _client.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -246,6 +273,17 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
             registerRequest);
 
         registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var user = await context.Users
+            .FirstAsync(x => x.Email == email);
+
+        user.EmailConfirmed = true;
+
+        await context.SaveChangesAsync();
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -290,7 +328,23 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
             "/api/v1/auth/register",
             registerRequest);
 
-        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var registerBodyText = await registerResponse.Content.ReadAsStringAsync();
+
+        registerResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: registerBodyText);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var user = await context.Users
+            .FirstAsync(x => x.Email == email);
+
+        user.EmailConfirmed = true;
+
+        await context.SaveChangesAsync();
 
         for (var i = 0; i < 5; i++)
         {

@@ -1,4 +1,5 @@
-﻿using CarServiceBookingSystem.Infrastructure.Persistence;
+﻿using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Moq;
 
 namespace CarServiceBookingSystem.IntegrationTests;
 
@@ -15,6 +17,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
 
         builder.ConfigureAppConfiguration((context, config) =>
         {
@@ -40,6 +43,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             {
                 options.UseInMemoryDatabase("IntegrationTestDb");
             });
+            services.RemoveAll<IBackgroundJobService>();
+
+            var backgroundJobMock = new Mock<IBackgroundJobService>();
+
+            services.AddSingleton(backgroundJobMock.Object);
+            services.RemoveAll<IEmailService>();
+
+            var emailServiceMock = new Mock<IEmailService>();
+
+            services.AddSingleton(emailServiceMock.Object);
         });
         
     }

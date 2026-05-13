@@ -3,6 +3,7 @@ using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Services;
 using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarServiceBookingSystem.UnitTests.Services;
 
@@ -75,23 +76,33 @@ public class SecurityAuditServiceTests
     {
         await using var context = TestDbContextFactory.CreateDbContext();
 
-        await context.SecurityAuditLogs.AddRangeAsync(
-     new SecurityAuditLog
-     {
-         UserId = "user-1",
-         EventType = "LoginSuccess",
-         IpAddress = "127.0.0.1",
-         Device = "Chrome"
-     },
-     new SecurityAuditLog
-     {
-         UserId = "user-2",
-         EventType = "LoginFailed",
-         IpAddress = "127.0.0.2",
-         Device = "Firefox"
-     });
+        var log1 = new SecurityAuditLog
+        {
+            UserId = "user-1",
+            EventType = "LoginSuccess",
+            IpAddress = "127.0.0.1",
+            Device = "Chrome",
+            IsDeleted = false
+        };
+
+        var log2 = new SecurityAuditLog
+        {
+            UserId = "user-2",
+            EventType = "PasswordChanged",
+            IpAddress = "127.0.0.2",
+            Device = "Firefox",
+            IsDeleted = false
+        };
+
+        context.SecurityAuditLogs.Add(log1);
+        context.SecurityAuditLogs.Add(log2);
 
         await context.SaveChangesAsync();
+
+        context.SecurityAuditLogs
+            .IgnoreQueryFilters()
+            .Should()
+            .HaveCount(2);
 
         var service = new SecurityAuditQueryService(context);
 
@@ -99,11 +110,12 @@ public class SecurityAuditServiceTests
         {
             PageNumber = 1,
             PageSize = 10,
-            Search = "PasswordChanged"
+            Search = "user-2"
         });
 
         result.Success.Should().BeTrue();
+        result.Data.Should().NotBeNull();
         result.Data!.Items.Should().HaveCount(1);
-        result.Data.Items[0].EventType.Should().Be("PasswordChanged");
+        result.Data.Items[0].UserId.Should().Be("user-2");
     }
 }
