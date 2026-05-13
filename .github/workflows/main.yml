@@ -27,3 +27,6 @@ jobs:
 
       - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Run integration tests
+        run: dotnet test CarServiceBookingSystem.IntegrationTests --no-build --configuration Release --verbosity normal
