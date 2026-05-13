@@ -2,6 +2,7 @@
 using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.DTOs.Cars;
 using CarServiceBookingSystem.Application.DTOs.Services;
+using CarServiceBookingSystem.Application.Interfaces;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;

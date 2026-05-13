@@ -12,4 +12,9 @@ public interface IAuthService
     Task<ApiResponse<string>> LogoutAllDevicesAsync();
     Task<ApiResponse<List<ActiveSessionResponse>>> GetActiveSessionsAsync();
     Task<ApiResponse<string>> RevokeSessionAsync(int sessionId);
+    Task<ApiResponse<string>> ConfirmEmailAsync(string userId, string token);
+    Task<ApiResponse<string>> ResendEmailConfirmationAsync(ResendEmailConfirmationRequest request);
+    Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request);
+    Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request);
 }

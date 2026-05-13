@@ -19,16 +19,26 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly ApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IEmailService _emailService;
+    private readonly IBackgroundJobService _backgroundJobService;
+    private readonly ISecurityAuditService _securityAuditService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         ITokenService tokenService,
-        ApplicationDbContext context,IHttpContextAccessor httpContextAccessor)
+        ApplicationDbContext context,IHttpContextAccessor httpContextAccessor,
+        IEmailService emailService,
+        IBackgroundJobService backgroundJobService,
+        ISecurityAuditService securityAuditService)
     {
         _userManager = userManager;
         _tokenService = tokenService;
         _context = context;
         _httpContextAccessor = httpContextAccessor;
+        
+        _emailService = emailService;
+        _backgroundJobService = backgroundJobService;
+        _securityAuditService = securityAuditService;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -86,7 +96,11 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        
+
+        var emailConfirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var confirmationLink = $"https://your-frontend-domain.com/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(emailConfirmationToken)}";
+        _backgroundJobService.EnqueueEmail(user.Email!,"Confirm your email",$"Please confirm your email by clicking this link: {confirmationLink}");
+
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -100,6 +114,117 @@ public class AuthService : IAuthService
         });
     }
 
+    public async Task<ApiResponse<string>> ConfirmEmailAsync(string userId, string token)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+        {
+            return ApiResponse<string>.Fail("User not found");
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+
+        if (!result.Succeeded)
+        {
+            return ApiResponse<string>.Fail(
+                "Email confirmation failed",
+                result.Errors.Select(x => x.Description).ToList());
+        }
+
+        return ApiResponse<string>.Ok("Email confirmed successfully");
+    }
+    public async Task<ApiResponse<string>> ResendEmailConfirmationAsync(
+    ResendEmailConfirmationRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found");
+
+        if (await _userManager.IsEmailConfirmedAsync(user))
+            return ApiResponse<string>.Fail("Email is already confirmed");
+
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        var confirmationLink =$"https://your-frontend-domain.com/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+        _backgroundJobService.EnqueueEmail(user.Email!, "Confirm your email", $"Please confirm your email by clicking this link: {confirmationLink}");
+
+        return ApiResponse<string>.Ok("Confirmation email sent successfully");
+    }
+    public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user == null)
+        {
+            return ApiResponse<string>.Ok("If the email exists, a reset password link has been sent.");
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        var resetLink =
+            $"https://your-frontend-domain.com/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+
+        _backgroundJobService.EnqueueEmail(user.Email!,"Reset your password",$"Reset your password using this link: {resetLink}");
+
+        return ApiResponse<string>.Ok("If the email exists, a reset password link has been sent.");
+    }
+    public async Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user == null)
+        {
+            return ApiResponse<string>.Fail("Invalid reset request");
+        }
+
+        var result = await _userManager.ResetPasswordAsync(
+            user,
+            request.Token,
+            request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            return ApiResponse<string>.Fail(
+                "Password reset failed",
+                result.Errors.Select(x => x.Description).ToList());
+        }
+
+        return ApiResponse<string>.Ok("Password reset successfully");
+    }
+
+    public async Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request)
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<string>.Fail("User is not authenticated");
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found");
+
+        var result = await _userManager.ChangePasswordAsync(
+            user,
+            request.CurrentPassword,
+            request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            return ApiResponse<string>.Fail(
+                "Password change failed",
+                result.Errors.Select(x => x.Description).ToList());
+        }
+        _backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
+            "Your password was changed successfully. If this was not you, please contact support immediately.");
+        await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
+        return ApiResponse<string>.Ok("Password changed successfully");
+    }
+
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
 
@@ -109,7 +234,10 @@ public class AuthService : IAuthService
         {
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
-
+        if (!await _userManager.IsEmailConfirmedAsync(user))
+        {
+            return ApiResponse<AuthResponse>.Fail("Please confirm your email before logging in.");
+        }
         if (await _userManager.IsLockedOutAsync(user))
         {
             return ApiResponse<AuthResponse>.Fail("Account is temporarily locked. Try again later.");
@@ -120,6 +248,7 @@ public class AuthService : IAuthService
         if (!validPassword)
         {
             await _userManager.AccessFailedAsync(user);
+            await _securityAuditService.LogAsync(user.Id,"LoginFailed",GetIpAddress(),GetDevice(),"Invalid password");
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
@@ -154,7 +283,8 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        
+        await _securityAuditService.LogAsync(user.Id, "LoginSuccess", GetIpAddress(), GetDevice());
+
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -176,7 +306,7 @@ public class AuthService : IAuthService
         if (storedToken != null && storedToken.IsRevoked)
         {
             await RevokeAllUserRefreshTokensAsync(storedToken.UserId);
-
+            await _securityAuditService.LogAsync(storedToken.UserId,"RefreshTokenReuseDetected",GetIpAddress(),GetDevice());
             return ApiResponse<AuthResponse>.Fail("Refresh token reuse detected. All sessions have been revoked.");
         }
 
@@ -226,9 +356,6 @@ public class AuthService : IAuthService
 
         var newAccessToken = await _tokenService.CreateAccessTokenAsync(authUser);
         
-
-        
-
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             UserId = user.Id,
@@ -276,15 +403,13 @@ public class AuthService : IAuthService
         storedToken.RevocationReason = "Logout";
 
         await _context.SaveChangesAsync();
-
+        await _securityAuditService.LogAsync(storedToken.UserId, "Logout", GetIpAddress(), GetDevice());
         return ApiResponse<string>.Ok("Logged out", "Logout successful");
     }
 
     public async Task<ApiResponse<string>> LogoutAllDevicesAsync()
     {
-        var userId = _httpContextAccessor.HttpContext?.User?
-            .FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?
-            .Value;
+        var userId = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userId))
         {

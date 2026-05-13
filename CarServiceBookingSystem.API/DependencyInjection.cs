@@ -43,6 +43,10 @@ namespace CarServiceBookingSystem.API
             services.AddScoped<ValidationFilter<UpdateBookingStatusRequest>>();
             services.AddScoped<ValidationFilter<CreateServiceRequest>>();
             services.AddScoped<ValidationFilter<UpdateServiceRequest>>();
+            services.AddScoped<ValidationFilter<ResendEmailConfirmationRequest>>();
+            services.AddScoped<ValidationFilter<ForgotPasswordRequest>>();
+            services.AddScoped<ValidationFilter<ResetPasswordRequest>>();
+            services.AddScoped<ValidationFilter<ChangePasswordRequest>>();
 
             services.AddControllers();
             services.AddApplication();

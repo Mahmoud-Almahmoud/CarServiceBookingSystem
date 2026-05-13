@@ -33,6 +33,62 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string userId,[FromQuery] string token)
+    {
+        var result = await _authService.ConfirmEmailAsync(userId, token);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+    [HttpPost("resend-email-confirmation")]
+    [ServiceFilter(typeof(ValidationFilter<ResendEmailConfirmationRequest>))]
+    public async Task<IActionResult> ResendEmailConfirmation(
+    ResendEmailConfirmationRequest request)
+    {
+        var result = await _authService.ResendEmailConfirmationAsync(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [HttpPost("forgot-password")]
+    [ServiceFilter(typeof(ValidationFilter<ForgotPasswordRequest>))]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("reset-password")]
+    [ServiceFilter(typeof(ValidationFilter<ResetPasswordRequest>))]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPasswordAsync(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    [ServiceFilter(typeof(ValidationFilter<ChangePasswordRequest>))]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var result = await _authService.ChangePasswordAsync(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
     [HttpPost("login")]
     [ServiceFilter(typeof(ValidationFilter<LoginRequest>))]
     public async Task<IActionResult> Login(LoginRequest request)

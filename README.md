@@ -15,8 +15,25 @@ Production-ready backend API built with ASP.NET Core and Clean Architecture for 
 - Secure Protected Endpoints
 - Account lockout protection
 - Failed login tracking
+- Authenticated user password change
 
 ---
+
+## Email Confirmation
+
+- Email confirmation token generation
+- Confirm email endpoint
+- Resend email confirmation endpoint
+- Login blocked until email is confirmed
+
+## Password Recovery
+
+- Forgot password endpoint
+- Secure reset token generation
+- Reset password endpoint
+
+---
+
 ## Session Management
 
 - Multiple active device sessions supported
@@ -120,6 +137,26 @@ Built-in brute-force protection:
 ```txt
 5 failed login attempts → account locked for 15 minutes
 ```
+
+---
+## Security Audit Logs
+
+Tracks important security events:
+
+- Login success
+- Login failed
+- Logout
+- Password changed
+- Refresh token reuse detected
+- Session revoked
+- Logout from all devices
+
+Admin endpoint:
+
+```txt
+GET /api/v1/security-audit-logs?pageNumber=1&pageSize=10
+```
+---
 
 # Architecture
 
@@ -247,6 +284,12 @@ Contains:
 
 # API Features
 
+## Audit
+
+```txt
+GET /api/v1/security-audit-logs
+```
+
 ## Authentication
 
 ```txt
@@ -257,6 +300,11 @@ POST /api/v1/auth/logout
 GET /api/v1/auth/sessions
 DELETE /api/v1/auth/sessions/{sessionId}
 POST /api/v1/auth/logout-all-devices
+GET  /api/v1/auth/confirm-email
+POST /api/v1/auth/resend-email-confirmation
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/reset-password
+POST /api/v1/auth/change-password
 ```
 
 ---

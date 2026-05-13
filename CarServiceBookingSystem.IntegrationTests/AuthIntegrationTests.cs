@@ -316,6 +316,114 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         lockedResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized, because: body);
         body.Should().Contain("Account is temporarily locked");
     }
+
+    [Fact]
+    public async Task ForgotPassword_Should_Return_Generic_Success_Message()
+    {
+        var request = new
+        {
+            email = "missing-user@test.com"
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/forgot-password",
+            request);
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        body.Should().Contain("If the email exists");
+    }
+    [Fact]
+    public async Task ResetPassword_Should_Return_BadRequest_When_Token_Is_Invalid()
+    {
+        var request = new
+        {
+            email = "missing-user@test.com",
+            token = "invalid-token",
+            newPassword = "NewPass123!"
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/reset-password",
+            request);
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
+        body.Should().Contain("Invalid reset request");
+    }
+    [Fact]
+    public async Task ConfirmEmail_Should_Return_BadRequest_When_User_Not_Found()
+    {
+        var response = await _client.GetAsync(
+            "/api/v1/auth/confirm-email?userId=missing-user-id&token=invalid-token");
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
+        body.Should().Contain("User not found");
+    }
+    [Fact]
+    public async Task ResendEmailConfirmation_Should_Return_BadRequest_When_User_Not_Found()
+    {
+        var request = new
+        {
+            email = "missing@test.com"
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/resend-email-confirmation",
+            request);
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
+        body.Should().Contain("User not found");
+    }
+
+    [Fact]
+    public async Task ChangePassword_Should_Return_Success_When_User_Is_Authenticated()
+    {
+        var email = $"change-password-{Guid.NewGuid()}@test.com";
+
+        var registerRequest = new
+        {
+            fullName = "Change Password User",
+            email,
+            phoneNumber = "0500000000",
+            password = "OldPass123!"
+        };
+
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            registerRequest);
+
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var registerBody = await registerResponse.Content
+            .ReadFromJsonAsync<AuthTestResponse>();
+
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                registerBody!.Data.AccessToken);
+
+        var changePasswordRequest = new
+        {
+            currentPassword = "OldPass123!",
+            newPassword = "NewPass123!"
+        };
+
+        var changePasswordResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/change-password",
+            changePasswordRequest);
+
+        var body = await changePasswordResponse.Content.ReadAsStringAsync();
+
+        changePasswordResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        body.Should().Contain("Password changed successfully");
+    }
 }
 
 

@@ -82,6 +82,8 @@ public static class DependencyInjection
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IBackgroundJobService, HangfireBackgroundJobService>();
+        services.AddScoped<ISecurityAuditService, SecurityAuditService>();
+        services.AddScoped<ISecurityAuditQueryService, SecurityAuditQueryService>();
 
         return services;
     }
