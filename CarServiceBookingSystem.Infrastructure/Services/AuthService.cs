@@ -102,6 +102,7 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
+
         var user = await _userManager.FindByEmailAsync(request.Email);
 
         if (user == null)
@@ -109,14 +110,21 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
 
-        var validPassword = await _userManager.CheckPasswordAsync(
-            user,
-            request.Password);
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            return ApiResponse<AuthResponse>.Fail("Account is temporarily locked. Try again later.");
+        }
+
+        var validPassword = await _userManager.CheckPasswordAsync(user,request.Password);
 
         if (!validPassword)
         {
+            await _userManager.AccessFailedAsync(user);
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+       
 
         var roles = await _userManager.GetRolesAsync(user);
 

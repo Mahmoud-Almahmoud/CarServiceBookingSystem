@@ -13,6 +13,8 @@ Production-ready backend API built with ASP.NET Core and Clean Architecture for 
 - Refresh Tokens
 - Role-Based Authorization
 - Secure Protected Endpoints
+- Account lockout protection
+- Failed login tracking
 
 ---
 ## Session Management
@@ -98,6 +100,26 @@ Brand → Model → Year → Trim
 - Serilog Logging
 
 ---
+
+## Password Security
+
+ASP.NET Core Identity password policy:
+
+- Minimum length requirements
+- Uppercase requirement
+- Lowercase requirement
+- Numeric requirement
+- Non-alphanumeric character requirement
+
+---
+
+## Account Lockout Protection
+
+Built-in brute-force protection:
+
+```txt
+5 failed login attempts → account locked for 15 minutes
+```
 
 # Architecture
 

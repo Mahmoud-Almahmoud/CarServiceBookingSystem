@@ -272,6 +272,50 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         logoutAllResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
         body.Should().Contain("Logged out from all devices");
     }
+
+    [Fact]
+    public async Task Login_Should_Lock_Account_After_Too_Many_Failed_Attempts()
+    {
+        var email = $"lockout-{Guid.NewGuid()}@test.com";
+
+        var registerRequest = new
+        {
+            fullName = "Lockout User",
+            email,
+            phoneNumber = "0500000000",
+            password = "Test123!"
+        };
+
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            registerRequest);
+
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await _client.PostAsJsonAsync(
+                "/api/v1/auth/login",
+                new
+                {
+                    email,
+                    password = "Wrong123!"
+                });
+        }
+
+        var lockedResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new
+            {
+                email,
+                password = "Wrong123!"
+            });
+
+        var body = await lockedResponse.Content.ReadAsStringAsync();
+
+        lockedResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized, because: body);
+        body.Should().Contain("Account is temporarily locked");
+    }
 }
 
 

@@ -10,6 +10,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Moq;
+using System.Net;
 using System.Security.Claims;
 
 namespace CarServiceBookingSystem.UnitTests.Services;
@@ -186,6 +187,8 @@ public class AuthServiceTests
             .Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(new List<string> { "User" });
 
+        
+
         var tokenServiceMock = new Mock<ITokenService>();
 
         tokenServiceMock
@@ -220,6 +223,7 @@ public class AuthServiceTests
         result.Data.RefreshToken.Should().Be("refresh-token");
 
         context.RefreshTokens.Count().Should().Be(1);
+        userManagerMock.Verify(x => x.ResetAccessFailedCountAsync(user), Times.Once);
     }
 
     [Fact]
@@ -690,4 +694,107 @@ public class AuthServiceTests
             .Should()
             .BeTrue();
     }
+
+    [Fact]
+    public async Task LoginAsync_Should_Fail_When_User_Is_Locked_Out()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "locked@test.com",
+            UserName = "locked@test.com",
+            FullName = "Locked User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        userManagerMock
+            .Setup(x => x.FindByEmailAsync("locked@test.com"))
+            .ReturnsAsync(user);
+
+        userManagerMock
+            .Setup(x => x.IsLockedOutAsync(user))
+            .ReturnsAsync(true);
+
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = "locked@test.com",
+            Password = "Wrong123!"
+        });
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be("Account is temporarily locked. Try again later.");
+    }
+    [Fact]
+    public async Task LoginAsync_Should_Call_AccessFailed_When_Password_Is_Invalid()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            UserName = "test@test.com",
+            FullName = "Test User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        userManagerMock
+            .Setup(x => x.FindByEmailAsync("test@test.com"))
+            .ReturnsAsync(user);
+
+        userManagerMock
+            .Setup(x => x.IsLockedOutAsync(user))
+            .ReturnsAsync(false);
+
+        userManagerMock
+            .Setup(x => x.CheckPasswordAsync(user, "Wrong123!"))
+            .ReturnsAsync(false);
+
+        userManagerMock
+            .Setup(x => x.AccessFailedAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = "test@test.com",
+            Password = "Wrong123!"
+        });
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be("Invalid credentials");
+
+        userManagerMock.Verify(x => x.AccessFailedAsync(user), Times.Once);
+    }
+
+    
 }
