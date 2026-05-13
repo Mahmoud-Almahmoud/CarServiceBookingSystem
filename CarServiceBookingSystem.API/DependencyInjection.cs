@@ -16,7 +16,7 @@ namespace CarServiceBookingSystem.API
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddAPIDependencies(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddAPIDependencies(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
         {
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -46,6 +46,20 @@ namespace CarServiceBookingSystem.API
 
             services.AddControllers();
             services.AddApplication();
+            if (environment.IsEnvironment("Testing"))
+            {
+                configuration["JwtSettings:Secret"] =
+                    "THIS_IS_A_TEST_SECRET_KEY_FOR_INTEGRATION_TESTS_123456789";
+
+                configuration["JwtSettings:Issuer"] =
+                    "CarServiceBookingSystem";
+
+                configuration["JwtSettings:Audience"] =
+                    "CarServiceBookingSystemUsers";
+
+                configuration["JwtSettings:ExpiryMinutes"] =
+                    "60";
+            }
             services.AddInfrastructure(configuration);
 
             services.AddEndpointsApiExplorer();
@@ -82,13 +96,17 @@ namespace CarServiceBookingSystem.API
                 });
                         });
 
-            services.AddHangfire(config =>
+            if (!environment.IsEnvironment("Testing"))
             {
-                config.UseSqlServerStorage(
-                    configuration.GetConnectionString("DefaultConnection"));
-            });
+                services.AddHangfire(config =>
+                {
+                    config.UseSqlServerStorage(
+                        configuration.GetConnectionString("DefaultConnection"));
+                });
 
-            services.AddHangfireServer();
+                services.AddHangfireServer();
+            }
+
 
             return services;
         }

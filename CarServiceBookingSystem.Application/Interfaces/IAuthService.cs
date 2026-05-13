@@ -9,4 +9,7 @@ public interface IAuthService
     Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request);
     Task<ApiResponse<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request);
     Task<ApiResponse<string>> LogoutAsync(LogoutRequest request);
+    Task<ApiResponse<string>> LogoutAllDevicesAsync();
+    Task<ApiResponse<List<ActiveSessionResponse>>> GetActiveSessionsAsync();
+    Task<ApiResponse<string>> RevokeSessionAsync(int sessionId);
 }

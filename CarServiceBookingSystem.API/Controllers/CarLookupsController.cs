@@ -6,7 +6,7 @@ namespace CarServiceBookingSystem.API.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/car-lookups")]
 public class CarLookupsController : ControllerBase
 {
     private readonly ICarLookupService _carLookupService;

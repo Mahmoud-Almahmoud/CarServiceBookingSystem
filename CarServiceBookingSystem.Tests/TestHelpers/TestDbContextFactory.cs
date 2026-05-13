@@ -3,7 +3,7 @@ using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
-namespace CarServiceBookingSystem.Tests.TestHelpers;
+namespace CarServiceBookingSystem.UnitTests.TestHelpers;
 
 public static class TestDbContextFactory
 {

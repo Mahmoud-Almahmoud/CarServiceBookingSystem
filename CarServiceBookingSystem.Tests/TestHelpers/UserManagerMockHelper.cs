@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
-namespace CarServiceBookingSystem.Tests.TestHelpers;
+namespace CarServiceBookingSystem.UnitTests.TestHelpers;
 
 public static class UserManagerMockHelper
 {

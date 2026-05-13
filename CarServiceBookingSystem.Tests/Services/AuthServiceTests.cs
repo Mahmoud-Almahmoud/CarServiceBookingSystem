@@ -2,14 +2,17 @@
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Services;
-using CarServiceBookingSystem.Tests.TestHelpers;
+using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Moq;
+using System.Security.Claims;
 
-namespace CarServiceBookingSystem.Tests.Services;
+namespace CarServiceBookingSystem.UnitTests.Services;
 
 public class AuthServiceTests
 {
@@ -32,10 +35,15 @@ public class AuthServiceTests
 
         var tokenServiceMock = new Mock<ITokenService>();
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new RegisterRequest
         {
@@ -86,10 +94,15 @@ public class AuthServiceTests
             .Setup(x => x.GenerateRefreshToken())
             .Returns("refresh-token");
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new RegisterRequest
         {
@@ -122,10 +135,15 @@ public class AuthServiceTests
 
         var tokenServiceMock = new Mock<ITokenService>();
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new LoginRequest
         {
@@ -178,10 +196,15 @@ public class AuthServiceTests
             .Setup(x => x.GenerateRefreshToken())
             .Returns("refresh-token");
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new LoginRequest
         {
@@ -207,10 +230,15 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var tokenServiceMock = new Mock<ITokenService>();
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new RefreshTokenRequest
         {
@@ -230,7 +258,7 @@ public class AuthServiceTests
         context.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user-id",
-            Token = "old-refresh-token",
+            Token = TokenHasher.Hash("old-refresh-token"),
             ExpiresAt = DateTime.UtcNow.AddDays(1),
             IsRevoked = false
         });
@@ -264,10 +292,21 @@ public class AuthServiceTests
             .Setup(x => x.GenerateRefreshToken())
             .Returns("new-refresh-token");
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+                                new Claim("session_id", "1")
+            ], "TestAuth"));
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new RefreshTokenRequest
         {
@@ -282,9 +321,9 @@ public class AuthServiceTests
         result.Data.RefreshToken.Should().Be("new-refresh-token");
 
         context.RefreshTokens.Count().Should().Be(2);
-
+        var oldHashedToken = TokenHasher.Hash("old-refresh-token");
         context.RefreshTokens
-            .First(x => x.Token == "old-refresh-token")
+            .First(x => x.Token == oldHashedToken)
             .IsRevoked
             .Should()
             .BeTrue();
@@ -298,10 +337,21 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var tokenServiceMock = new Mock<ITokenService>();
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+                new Claim("session_id", "1")
+            ], "TestAuth"));
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new LogoutRequest
         {
@@ -311,7 +361,7 @@ public class AuthServiceTests
         var result = await authService.LogoutAsync(request);
 
         result.Success.Should().BeFalse();
-        result.Message.Should().Be("Invalid refresh token");
+        result.Message.Should().Be("Active session not found");
     }
     [Fact]
     public async Task LogoutAsync_Should_Revoke_RefreshToken_When_Token_Is_Valid()
@@ -321,7 +371,7 @@ public class AuthServiceTests
         context.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user-id",
-            Token = "valid-refresh-token",
+            Token = TokenHasher.Hash("valid-refresh-token"),
             ExpiresAt = DateTime.UtcNow.AddDays(1),
             IsRevoked = false
         });
@@ -331,10 +381,21 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var tokenServiceMock = new Mock<ITokenService>();
 
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+                        new Claim("session_id", "1")
+            ], "TestAuth"));
         var authService = new AuthService(
             userManagerMock.Object,
             tokenServiceMock.Object,
-            context);
+            context,
+            httpContextAccessor);
 
         var request = new LogoutRequest
         {
@@ -344,10 +405,289 @@ public class AuthServiceTests
         var result = await authService.LogoutAsync(request);
 
         result.Success.Should().BeTrue();
-
+        var validHashedToken = TokenHasher.Hash("valid-refresh-token");
         var token = context.RefreshTokens
-            .First(x => x.Token == "valid-refresh-token");
+            .First(x => x.Token == validHashedToken);
 
         token.IsRevoked.Should().BeTrue();
+    }
+    [Fact]
+    public async Task RefreshTokenAsync_Should_Revoke_All_Tokens_When_Revoked_Token_Is_Reused()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.RefreshTokens.AddRange(
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("reused-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = true,
+                CreatedAt = DateTime.UtcNow,
+                RevokedAt = DateTime.UtcNow
+            },
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("active-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var request = new RefreshTokenRequest
+        {
+            RefreshToken = "reused-token"
+        };
+
+        var result = await authService.RefreshTokenAsync(request);
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be(
+            "Refresh token reuse detected. All sessions have been revoked.");
+
+        context.RefreshTokens
+            .Where(x => x.UserId == "user-id")
+            .All(x => x.IsRevoked)
+            .Should()
+            .BeTrue();
+    }
+    [Fact]
+    public async Task GetActiveSessionsAsync_Should_Return_Only_Active_User_Sessions()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.RefreshTokens.AddRange(
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("active-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = "127.0.0.1",
+                Device = "Chrome"
+            },
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("revoked-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = true,
+                CreatedAt = DateTime.UtcNow,
+                Device = "Firefox"
+            },
+            new RefreshToken
+            {
+                UserId = "other-user-id",
+                Token = TokenHasher.Hash("other-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow,
+                Device = "Safari"
+            });
+
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id")
+            ], "TestAuth"));
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.GetActiveSessionsAsync();
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().HaveCount(1);
+        result.Data![0].Device.Should().Be("Chrome");
+    }
+    [Fact]
+    public async Task RevokeSessionAsync_Should_Revoke_Selected_Session()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = "user-id",
+            Token = TokenHasher.Hash("session-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.RefreshTokens.Add(refreshToken);
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+            new Claim("session_id", "999")
+            ], "TestAuth"));
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.RevokeSessionAsync(refreshToken.Id);
+
+        result.Success.Should().BeTrue();
+
+        var token = await context.RefreshTokens.FindAsync(refreshToken.Id);
+
+        token!.IsRevoked.Should().BeTrue();
+        token.RevocationReason.Should().Be("Session revoked by user");
+    }
+    [Fact]
+    public async Task RevokeSessionAsync_Should_Fail_When_Revoking_Current_Session()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = "user-id",
+            Token = TokenHasher.Hash("current-session-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.RefreshTokens.Add(refreshToken);
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+            new Claim("session_id", refreshToken.Id.ToString())
+            ], "TestAuth"));
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.RevokeSessionAsync(refreshToken.Id);
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be("You cannot revoke the current session. Use logout instead.");
+    }
+    [Fact]
+    public async Task LogoutAllDevicesAsync_Should_Revoke_All_Active_User_Tokens()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.RefreshTokens.AddRange(
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("token-1"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            },
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("token-2"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            },
+            new RefreshToken
+            {
+                UserId = "other-user-id",
+                Token = TokenHasher.Hash("other-token"),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id")
+            ], "TestAuth"));
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor);
+
+        var result = await authService.LogoutAllDevicesAsync();
+
+        result.Success.Should().BeTrue();
+
+        context.RefreshTokens
+            .Where(x => x.UserId == "user-id")
+            .All(x => x.IsRevoked)
+            .Should()
+            .BeTrue();
+
+        context.RefreshTokens
+            .Where(x => x.UserId == "other-user-id")
+            .All(x => !x.IsRevoked)
+            .Should()
+            .BeTrue();
     }
 }

@@ -30,9 +30,21 @@ public class GlobalExceptionMiddleware
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
+            var isTesting = context.RequestServices
+                .GetRequiredService<IWebHostEnvironment>()
+                .IsEnvironment("Testing");
+
+            var errors = isTesting
+                ? new List<string>
+                {
+            ex.Message,
+            ex.StackTrace ?? string.Empty
+                }
+                : new List<string> { ex.Message };
+
             var response = ApiResponse<string>.Fail(
                 "An unexpected error occurred",
-                new List<string> { ex.Message });
+                errors);
 
             var json = JsonSerializer.Serialize(response);
 

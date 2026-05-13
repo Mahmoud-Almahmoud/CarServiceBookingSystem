@@ -2,6 +2,7 @@
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CarServiceBookingSystem.API.Controllers;
@@ -68,6 +69,38 @@ public class AuthController : ControllerBase
         {
             return BadRequest(result);
         }
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("logout-all-devices")]
+    public async Task<IActionResult> LogoutAllDevices()
+    {
+        var result = await _authService.LogoutAllDevicesAsync();
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("sessions")]
+    public async Task<IActionResult> GetActiveSessions()
+    {
+        var result = await _authService.GetActiveSessionsAsync();
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpDelete("sessions/{sessionId:int}")]
+    public async Task<IActionResult> RevokeSession(int sessionId)
+    {
+        var result = await _authService.RevokeSessionAsync(sessionId);
+
+        if (!result.Success)
+            return NotFound(result);
 
         return Ok(result);
     }

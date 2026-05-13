@@ -3,7 +3,7 @@ using CarServiceBookingSystem.Application.Validators.Bookings;
 using CarServiceBookingSystem.Domain.Enums;
 using FluentAssertions;
 
-namespace CarServiceBookingSystem.Tests.Validators;
+namespace CarServiceBookingSystem.UnitTests.Validators;
 
 public class CreateBookingRequestValidatorTests
 {

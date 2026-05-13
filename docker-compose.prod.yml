@@ -3,48 +3,51 @@ services:
     build:
       context: .
       dockerfile: CarServiceBookingSystem.API/Dockerfile
-    container_name: car-service-api
+    container_name: car-service-api-prod
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "Production"
 
       ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=CarServiceBookingDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
 
       JwtSettings__Secret: "${JWT_SECRET}"
+      JwtSettings__Issuer: "CarServiceBookingSystem"
+      JwtSettings__Audience: "CarServiceBookingSystemUsers"
+      JwtSettings__ExpiryMinutes: "60"
+
       StripeSettings__SecretKey: "${STRIPE_SECRET_KEY}"
       StripeSettings__WebhookSecret: "${STRIPE_WEBHOOK_SECRET}"
+      StripeSettings__Currency: "aed"
 
+      EmailSettings__Host: "smtp.gmail.com"
+      EmailSettings__Port: "587"
       EmailSettings__FromEmail: "${EMAIL_FROM}"
+      EmailSettings__FromName: "Car Service Booking"
       EmailSettings__Password: "${EMAIL_PASSWORD}"
+      EmailSettings__EnableSsl: "true"
 
     depends_on:
       sqlserver:
-        condition: service_started
+        condition: service_healthy
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: car-service-sql
+    container_name: car-service-sql-prod
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "${SA_PASSWORD}"
     ports:
       - "14333:1433"
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - sqlserver_prod_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -C -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
 
 volumes:
-  sqlserver_data:
+  sqlserver_prod_data:

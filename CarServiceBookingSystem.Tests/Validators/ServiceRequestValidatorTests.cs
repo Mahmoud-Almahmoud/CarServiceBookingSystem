@@ -2,7 +2,7 @@
 using CarServiceBookingSystem.Application.Validators.Services;
 using FluentAssertions;
 
-namespace CarServiceBookingSystem.Tests.Validators;
+namespace CarServiceBookingSystem.UnitTests.Validators;
 
 public class ServiceRequestValidatorTests
 {

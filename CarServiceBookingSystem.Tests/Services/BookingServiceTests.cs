@@ -4,11 +4,11 @@ using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Services;
-using CarServiceBookingSystem.Tests.TestHelpers;
+using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
 using Moq;
 
-namespace CarServiceBookingSystem.Tests.Services;
+namespace CarServiceBookingSystem.UnitTests.Services;
 
 public class BookingServiceTests
 {

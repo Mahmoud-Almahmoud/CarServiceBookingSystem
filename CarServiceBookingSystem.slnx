@@ -1,14 +1,17 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
+    <File Path=".env" />
     <File Path=".gitignore" />
+    <File Path="docker-compose.prod.yml" />
     <File Path="docker-compose.yml" />
-    <File Path="Dockerfile" />
+    <File Path="postman_collection.json" />
     <File Path="README.md" />
   </Folder>
   <Project Path="CarServiceBookingSystem.API/CarServiceBookingSystem.API.csproj" />
   <Project Path="CarServiceBookingSystem.Application/CarServiceBookingSystem.Application.csproj" />
   <Project Path="CarServiceBookingSystem.Domain/CarServiceBookingSystem.Domain.csproj" />
   <Project Path="CarServiceBookingSystem.Infrastructure/CarServiceBookingSystem.Infrastructure.csproj" />
-  <Project Path="CarServiceBookingSystem.Tests/CarServiceBookingSystem.Tests.csproj" Id="7e0bc40e-bfe6-4a17-b493-d32578bb2daa" />
+  <Project Path="CarServiceBookingSystem.IntegrationTests/CarServiceBookingSystem.IntegrationTests.csproj" Id="e967a611-ce7e-4bfa-874e-1b61425e3112" />
+  <Project Path="CarServiceBookingSystem.Tests/CarServiceBookingSystem.UnitTests.csproj" Id="7e0bc40e-bfe6-4a17-b493-d32578bb2daa" />
 </Solution>

@@ -1,25 +1,116 @@
 # Car Service Booking System API
 
-A production-ready backend API built with ASP.NET Core and Clean Architecture for managing car service bookings, user vehicles, payments, notifications, and service operations.
+Production-ready backend API built with ASP.NET Core and Clean Architecture for managing car service bookings, vehicles, authentication, payments, notifications, and background processing.
 
 ---
 
-# Overview
+# Features
 
-This project is designed as a scalable SaaS-ready backend system for car service businesses.
+## Authentication & Authorization
 
-The API provides:
+- ASP.NET Core Identity
+- JWT Authentication
+- Refresh Tokens
+- Role-Based Authorization
+- Secure Protected Endpoints
 
-- Secure authentication and authorization
-- Vehicle management
-- Booking scheduling
-- Stripe payment integration
-- Email notifications
-- Background job processing
-- Caching and pagination
-- Soft delete and audit tracking
-- Docker support
-- Automated testing and CI/CD support
+---
+## Session Management
+
+- Multiple active device sessions supported
+- Refresh tokens are hashed before storage
+- Refresh token rotation
+- Refresh token reuse detection
+- Active sessions endpoint
+- Revoke selected session
+- Logout from all devices
+- Current session detection using JWT `session_id` claim
+
+---
+
+## Vehicle Management
+
+- Add vehicles
+- Update vehicles
+- Delete vehicles
+- View user vehicles
+
+Dynamic lookup hierarchy:
+
+```txt
+Brand → Model → Year → Trim
+```
+
+---
+
+## Services Management
+
+- Create services
+- Update services
+- Delete services
+- Pagination
+- Filtering
+- Search
+- Sorting
+
+---
+
+## Booking System
+
+- Create bookings
+- User bookings
+- Admin bookings management
+- Booking status updates
+
+---
+
+## Stripe Payments
+
+- Stripe PaymentIntent integration
+- Stripe Webhooks
+- Payment confirmation
+- Booking payment synchronization
+
+---
+
+## Background Jobs
+
+- Hangfire integration
+- Background email sending
+- Dashboard monitoring
+
+---
+
+## System Features
+
+- Clean Architecture
+- Global Exception Handling
+- Validation Pipeline
+- Soft Delete
+- Audit Fields
+- Memory Caching
+- Response Compression
+- Rate Limiting
+- Health Checks
+- Docker Support
+- Integration Testing
+- GitHub Actions CI/CD
+- Serilog Logging
+
+---
+
+# Architecture
+
+Project follows Clean Architecture principles.
+
+```txt
+CarServiceBookingSystem.Domain
+CarServiceBookingSystem.Application
+CarServiceBookingSystem.Infrastructure
+CarServiceBookingSystem.API
+CarServiceBookingSystem.Tests
+CarServiceBookingSystem.IntegrationTests
+```
 
 ---
 
@@ -29,70 +120,54 @@ The API provides:
 
 - ASP.NET Core Web API
 - .NET 10
-- Clean Architecture
 - Entity Framework Core
 - SQL Server
 
-## Authentication & Security
+## Security
 
 - ASP.NET Core Identity
-- JWT Authentication
-- Refresh Tokens
-- Role-Based Authorization
+- JWT Bearer Authentication
 
 ## Payments
 
-- Stripe PaymentIntent API
-- Stripe Webhooks
+- Stripe.NET
 
 ## Background Jobs
 
 - Hangfire
-- SMTP Email Service
 
-## Validation & Logging
+## Validation
 
 - FluentValidation
+
+## Logging
+
 - Serilog
 
-## Testing & DevOps
+## Testing
 
 - xUnit
-- Moq
 - FluentAssertions
+- Moq
+
+## DevOps
+
+- Docker
+- Docker Compose
 - GitHub Actions
-- Docker & Docker Compose
-
-## Documentation & Utilities
-
-- Swagger / OpenAPI
-- API Versioning
-- MemoryCache
 
 ---
 
 # Project Structure
-
-```txt
-CarServiceBookingSystem.Domain
-CarServiceBookingSystem.Application
-CarServiceBookingSystem.Infrastructure
-CarServiceBookingSystem.API
-CarServiceBookingSystem.Tests
-```
-
----
-
-# Architecture
-
-The project follows Clean Architecture principles.
 
 ## Domain Layer
 
 Contains:
 - Entities
 - Enums
-- Core business rules
+- Core business logic
+
+---
 
 ## Application Layer
 
@@ -102,17 +177,20 @@ Contains:
 - Validators
 - Business contracts
 
+---
+
 ## Infrastructure Layer
 
 Contains:
 - EF Core
 - Identity
-- JWT implementation
-- Stripe integration
-- Hangfire jobs
+- JWT
+- Stripe
+- Hangfire
 - Email services
-- Caching
 - External integrations
+
+---
 
 ## API Layer
 
@@ -121,90 +199,149 @@ Contains:
 - Middleware
 - Filters
 - Swagger configuration
-- API versioning
-
-## Tests Layer
-
-Contains:
-- Unit tests
-- Validation tests
-- Service tests
-- Authentication tests
+- Versioning
+- Rate limiting
+- Health checks
 
 ---
 
-# Features
+## Testing Layers
+
+### Unit Tests
+
+- Service tests
+- Validation tests
+- Authentication tests
+
+### Integration Tests
+
+- Authentication endpoints
+- Protected endpoints
+- Bookings
+- Services
+- Car lookups
+
+---
+
+# API Features
 
 ## Authentication
 
-- User registration
-- User login
-- JWT access tokens
-- Refresh token rotation
-- Logout with token revocation
-- Role-based authorization
-
-## User Vehicles
-
-Users can:
-- Add vehicles
-- Update vehicles
-- Delete vehicles
-- View personal vehicles
-
-## Vehicle Lookup System
-
-Dynamic lookup flow:
-
 ```txt
-Brand → Model → Year → Trim
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh-token
+POST /api/v1/auth/logout
+GET /api/v1/auth/sessions
+DELETE /api/v1/auth/sessions/{sessionId}
+POST /api/v1/auth/logout-all-devices
 ```
 
-## Services Management
+---
 
-Admin capabilities:
-- Create services
-- Update services
-- Delete services
+## Profile
 
-Public capabilities:
-- View services
-- Pagination
-- Filtering
-- Sorting
+```txt
+GET /api/v1/profile/me
+```
 
-## Booking System
+---
 
-Users can:
-- Create bookings
-- View personal bookings
+## Car Lookups
 
-Admins can:
-- View all bookings
-- Filter bookings
-- Update booking status
+```txt
+GET /api/v1/car-lookups/brands
+GET /api/v1/car-lookups/models/{brandId}
+GET /api/v1/car-lookups/years/{modelId}
+GET /api/v1/car-lookups/trims/{yearId}
+```
+
+---
+
+## Cars
+
+```txt
+POST   /api/v1/cars
+PUT    /api/v1/cars/{id}
+DELETE /api/v1/cars/{id}
+GET    /api/v1/cars/my-cars
+```
+
+---
+
+## Services
+
+```txt
+GET    /api/v1/services
+POST   /api/v1/services
+PUT    /api/v1/services/{id}
+DELETE /api/v1/services/{id}
+```
+
+---
+
+## Bookings
+
+```txt
+POST /api/v1/bookings
+GET  /api/v1/bookings/my-bookings
+GET  /api/v1/bookings
+PUT  /api/v1/bookings/{id}/status
+```
+
+---
 
 ## Payments
 
-- Stripe PaymentIntent integration
-- Stripe webhook processing
-- Payment status synchronization
-- Booking auto-confirmation after successful payment
+```txt
+POST /api/v1/payments/create-intent/{bookingId}
+POST /api/v1/stripe-webhook
+```
 
-## Email Notifications
+---
 
-- Booking confirmation emails
-- Background email processing with Hangfire
+# Security Features
 
-## System Features
+## JWT Authentication
 
-- Global exception handling
-- Validation handling
-- Memory caching
-- API versioning
-- Soft delete
-- Audit fields
-- Request logging
+- Secure token generation
+- Refresh token rotation
+- Protected endpoints
+
+---
+
+## Rate Limiting
+
+Global fixed-window rate limiting:
+
+```txt
+100 requests per minute per IP
+```
+
+Protects against:
+- abuse
+- brute force attacks
+- excessive traffic
+
+---
+
+## Security Headers
+
+Includes:
+- X-Frame-Options
+- X-Content-Type-Options
+- Referrer-Policy
+- HSTS
+
+---
+
+## Forwarded Headers Support
+
+Supports:
+- reverse proxies
+- Nginx
+- Cloudflare
+- Docker deployments
 
 ---
 
@@ -212,7 +349,9 @@ Admins can:
 
 ## Soft Delete
 
-Entities are not permanently removed from the database.
+Entities are not permanently removed.
+
+---
 
 ## Audit Fields
 
@@ -237,65 +376,43 @@ cd CarServiceBookingSystem
 
 ---
 
-## 2. Configure Database
+## 2. Configure appsettings
 
-Update:
-
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=.;Database=CarServiceBookingDb;Trusted_Connection=True;TrustServerCertificate=True"
-}
-```
-
-inside:
-
-```txt
-appsettings.json
-```
-
----
-
-## 3. Configure JWT
+### appsettings.Development.json
 
 ```json
-"JwtSettings": {
-  "Secret": "YOUR_SECRET_KEY",
-  "Issuer": "CarServiceBookingSystem",
-  "Audience": "CarServiceBookingSystemUsers",
-  "ExpiryMinutes": 60
-}
-```
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.;Database=CarServiceBookingDb;Trusted_Connection=True;TrustServerCertificate=True"
+  },
 
----
+  "JwtSettings": {
+    "Secret": "YOUR_SECRET_KEY",
+    "Issuer": "CarServiceBookingSystem",
+    "Audience": "CarServiceBookingSystemUsers",
+    "ExpiryMinutes": 60
+  },
 
-## 4. Configure Stripe
+  "StripeSettings": {
+    "SecretKey": "sk_test_xxx",
+    "WebhookSecret": "whsec_xxx",
+    "Currency": "aed"
+  },
 
-```json
-"StripeSettings": {
-  "SecretKey": "sk_test_xxxxx",
-  "WebhookSecret": "whsec_xxxxx",
-  "Currency": "aed"
+  "EmailSettings": {
+    "Host": "smtp.gmail.com",
+    "Port": 587,
+    "FromEmail": "your-email@gmail.com",
+    "FromName": "Car Service Booking",
+    "Password": "your-password",
+    "EnableSsl": true
+  }
 }
 ```
 
 ---
 
-## 5. Configure Email
-
-```json
-"EmailSettings": {
-  "Host": "smtp.gmail.com",
-  "Port": 587,
-  "FromEmail": "your-email@gmail.com",
-  "FromName": "Car Service Booking",
-  "Password": "your-app-password",
-  "EnableSsl": true
-}
-```
-
----
-
-## 6. Apply Database Migrations
+## 3. Apply Migrations
 
 ```powershell
 Update-Database `
@@ -306,7 +423,7 @@ Update-Database `
 
 ---
 
-## 7. Run API
+## 4. Run API
 
 ```bash
 dotnet run --project CarServiceBookingSystem.API
@@ -314,7 +431,7 @@ dotnet run --project CarServiceBookingSystem.API
 
 ---
 
-## 8. Open Swagger
+## 5. Swagger
 
 ```txt
 https://localhost:xxxx/swagger
@@ -324,7 +441,28 @@ https://localhost:xxxx/swagger
 
 # Docker Setup
 
-## Run API + SQL Server
+## Environment Variables
+
+Create:
+
+```txt
+.env
+```
+
+Example:
+
+```env
+SA_PASSWORD=YourStrong!Passw0rd
+JWT_SECRET=YOUR_LONG_SECRET
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+EMAIL_FROM=your-email@gmail.com
+EMAIL_PASSWORD=your-password
+```
+
+---
+
+## Run Docker
 
 ```bash
 docker compose up --build
@@ -340,6 +478,14 @@ http://localhost:8080/swagger
 
 ---
 
+## Health Check
+
+```txt
+http://localhost:8080/health
+```
+
+---
+
 ## Hangfire Dashboard
 
 ```txt
@@ -348,14 +494,15 @@ http://localhost:8080/hangfire
 
 ---
 
-## SQL Server Connection (SSMS)
+## SQL Server Access
+
+Connect using SSMS:
 
 ```txt
 Server: localhost,14333
 Authentication: SQL Server Authentication
 Login: sa
 Password: YourStrong!Passw0rd
-Database: CarServiceBookingDb
 ```
 
 ---
@@ -368,7 +515,7 @@ docker compose down
 
 ---
 
-## Stop Containers and Delete Database
+## Delete Database Volume
 
 ```bash
 docker compose down -v
@@ -376,26 +523,100 @@ docker compose down -v
 
 ---
 
-## Notes
+# Production Docker
 
-- EF Core migrations run automatically on startup
-- Docker SQL Server is separate from LocalDB or local SQL Server installations
-- Docker uses persistent volumes for database storage
+Run production compose:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Stop:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
 
 ---
 
-# Default Admin Account
+# Health Checks
+
+Built-in health endpoint:
 
 ```txt
-Email: admin@carservice.com
-Password: Admin123!
+GET /health
 ```
+
+Supports:
+- Docker health checks
+- load balancers
+- cloud monitoring
+
+---
+
+# Response Compression
+
+Enabled using ASP.NET Core response compression middleware.
+
+Benefits:
+- smaller JSON payloads
+- faster API responses
+- lower bandwidth usage
+
+---
+
+# Testing
+
+## Unit Tests
+
+Run:
+
+```bash
+dotnet test CarServiceBookingSystem.Tests
+```
+
+---
+
+## Integration Tests
+
+Run:
+
+```bash
+dotnet test CarServiceBookingSystem.IntegrationTests
+```
+
+---
+
+## Code Coverage
+
+```bash
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+---
+
+# Postman Collection
+
+Import:
+
+```txt
+postman_collection.json
+```
+
+into Postman.
+
+Includes:
+- authentication
+- bookings
+- services
+- cars
+- payments
 
 ---
 
 # Stripe Testing
 
-## Start Stripe Webhook Listener
+## Start Webhook Listener
 
 ```bash
 stripe listen --events payment_intent.succeeded,payment_intent.payment_failed --forward-to http://localhost:8080/api/v1/stripe-webhook
@@ -414,86 +635,17 @@ Any ZIP code
 
 ---
 
-# API Endpoints
-
-## Authentication
-
-```txt
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh-token
-POST /api/v1/auth/logout
-```
-
-## Car Lookups
-
-```txt
-GET /api/v1/car-lookups/brands
-GET /api/v1/car-lookups/models/{brandId}
-GET /api/v1/car-lookups/years/{modelId}
-GET /api/v1/car-lookups/trims/{yearId}
-```
-
-## Cars
-
-```txt
-POST   /api/v1/cars
-PUT    /api/v1/cars/{id}
-DELETE /api/v1/cars/{id}
-GET    /api/v1/cars/my-cars
-```
-
-## Services
-
-```txt
-GET    /api/v1/services
-POST   /api/v1/services
-PUT    /api/v1/services/{id}
-DELETE /api/v1/services/{id}
-```
-
-## Bookings
-
-```txt
-POST /api/v1/bookings
-GET  /api/v1/bookings/my-bookings
-GET  /api/v1/bookings
-PUT  /api/v1/bookings/{id}/status
-```
-
-## Payments
-
-```txt
-POST /api/v1/payments/create-intent/{bookingId}
-POST /api/v1/stripe-webhook
-```
-
----
-
-# Unit Testing
-
-Run tests:
-
-```bash
-dotnet test
-```
-
-Generate coverage:
-
-```bash
-dotnet test --collect:"XPlat Code Coverage"
-```
-
----
-
 # CI/CD
 
 GitHub Actions automatically:
-- Restore packages
-- Build solution
-- Run unit tests
 
-Workflow file:
+- restore dependencies
+- build solution
+- run unit tests
+- run integration tests
+- verify Docker build
+
+Workflow:
 
 ```txt
 .github/workflows/dotnet.yml
@@ -503,7 +655,7 @@ Workflow file:
 
 # Logging
 
-Serilog logs are stored in:
+Serilog logs stored in:
 
 ```txt
 Logs/log-yyyyMMdd.txt
@@ -511,45 +663,64 @@ Logs/log-yyyyMMdd.txt
 
 ---
 
-# Validation
+# Deployment Options
 
-Validation is implemented using:
-- FluentValidation
-- Custom validation filters
-- Centralized API responses
+## Docker VPS
+
+Recommended for:
+- DigitalOcean
+- Hetzner
+- AWS EC2
+- Azure VM
+
+Run:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+---
+
+## Azure App Service
+
+Use:
+- environment variables
+- managed secrets
+- SQL Server/Azure SQL
+
+---
+
+## Render / Railway
+
+Simple deployment for portfolio/demo environments.
 
 ---
 
 # Security Notes
 
-## Never Commit
-
-Do not commit:
-- Stripe secret keys
+Never commit:
 - JWT secrets
+- Stripe secrets
 - SMTP passwords
-- Production connection strings
+- production connection strings
 
 Use:
-- User Secrets
-- Environment Variables
-- Azure Key Vault
-- Secure secret storage
+- environment variables
+- Docker secrets
+- cloud secret storage
 
 ---
 
 # Future Improvements
 
-- SignalR real-time notifications
 - Redis distributed caching
-- Integration tests
-- Docker production optimization
+- SignalR notifications
+- File uploads
+- Analytics dashboard
+- Mobile app support
 - Kubernetes deployment
-- Mobile app integration
-- File upload support
-- Dashboard analytics
-- Multi-tenant support
-- Full CI/CD deployment pipeline
+- Multi-tenant architecture
+- Full production CI/CD pipeline
 
 ---
 
@@ -558,5 +729,3 @@ Use:
 Mahmoud Almahmoud
 
 Backend Developer (.NET / ASP.NET Core)
-
-Abu Dhabi, UAE

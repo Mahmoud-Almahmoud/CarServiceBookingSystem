@@ -1,11 +1,11 @@
 ﻿using CarServiceBookingSystem.Application.DTOs.Services;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Services;
-using CarServiceBookingSystem.Tests.TestHelpers;
+using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace CarServiceBookingSystem.Tests.Services;
+namespace CarServiceBookingSystem.UnitTests.Services;
 
 public class ServiceServiceTests
 {

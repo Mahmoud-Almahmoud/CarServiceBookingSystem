@@ -25,6 +25,10 @@ public class TokenService : ITokenService
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName)
         };
+        if (user.SessionId.HasValue)
+        {
+            claims.Add(new Claim("session_id", user.SessionId.Value.ToString()));
+        }
 
         foreach (var role in user.Roles)
         {
