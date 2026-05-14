@@ -34,6 +34,11 @@ publish/
 # Environment
 .env
 
+# Keys
+*.pfx
+*.key
+secrets.json
+
 # Tests
 TestResults/
 CoverageReport/
