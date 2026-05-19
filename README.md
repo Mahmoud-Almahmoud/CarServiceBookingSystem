@@ -19,12 +19,40 @@ Production-ready backend API built with ASP.NET Core and Clean Architecture for 
 
 ---
 
+## Trusted Devices
+
+- JWT/API-friendly trusted-device system
+- Supports React and mobile apps
+- Trusted device tokens are hashed before storage
+- Remember-device support after successful 2FA
+- Trusted devices can bypass 2FA on future logins
+- Users can view trusted devices
+- Users can revoke one trusted device
+- Users can revoke all trusted devices
+- Expired trusted devices are cleaned automatically by Hangfire
+
+---
+## Two-Factor Authentication
+
+- Authenticator app 2FA
+- QR code setup endpoint
+- 2FA verification endpoint
+- 2FA login endpoint
+- Disable 2FA endpoint
+- Recovery codes
+- Recovery-code login
+- Strict rate limiting for 2FA attempts
+
+---
+
 ## Email Confirmation
 
 - Email confirmation token generation
 - Confirm email endpoint
 - Resend email confirmation endpoint
 - Login blocked until email is confirmed
+
+---
 
 ## Password Recovery
 
@@ -127,6 +155,17 @@ ASP.NET Core Identity password policy:
 - Lowercase requirement
 - Numeric requirement
 - Non-alphanumeric character requirement
+
+---
+
+## Password Change Security
+
+When a user changes their password:
+
+- Other active refresh-token sessions are revoked
+- Trusted devices are revoked
+- Security audit log is created
+- Email notification is queued by Hangfire
 
 ---
 
@@ -305,6 +344,16 @@ POST /api/v1/auth/resend-email-confirmation
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
 POST /api/v1/auth/change-password
+GET    /api/v1/auth/trusted-devices
+DELETE /api/v1/auth/trusted-devices/{deviceId}
+DELETE /api/v1/auth/trusted-devices
+GET    /api/v1/auth/2fa/setup
+GET    /api/v1/auth/2fa/qr-code
+POST   /api/v1/auth/2fa/enable
+POST   /api/v1/auth/2fa/login
+POST   /api/v1/auth/2fa/disable
+POST   /api/v1/auth/2fa/recovery-codes
+POST   /api/v1/auth/2fa/recovery-login
 ```
 
 ---

@@ -219,7 +219,30 @@ public class AuthService : IAuthService
                 "Password change failed",
                 result.Errors.Select(x => x.Description).ToList());
         }
-        _backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
+
+        var trustedDevices = await _context.TrustedDevices.Where(x =>x.UserId == user.Id &&!x.IsRevoked).ToListAsync();
+        foreach (var device in trustedDevices)
+        {
+            device.IsRevoked = true;
+        }
+        
+        await _securityAuditService.LogAsync(user.Id,"TrustedDevicesRevokedAfterPasswordChange",GetIpAddress(),GetDevice());
+
+        var currentSessionId = GetCurrentSessionId();
+        var activeTokens = await _context.RefreshTokens
+            .Where(x =>x.UserId == user.Id && !x.IsRevoked && (!currentSessionId.HasValue || x.Id != currentSessionId.Value))
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedByIp = GetIpAddress();
+            token.RevocationReason = "Password changed";
+        }
+        await _context.SaveChangesAsync();
+
+        _backgroundJobService.EnqueueEmail(user.Email!, "Password Changed",
             "Your password was changed successfully. If this was not you, please contact support immediately.");
         await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
         return ApiResponse<string>.Ok("Password changed successfully");
@@ -252,6 +275,21 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
+
+        var isSuspicious = await IsSuspiciousLoginAsync(user.Id);
+
+        if (isSuspicious)
+        {
+            await _securityAuditService.LogAsync(
+                user.Id,
+                "SuspiciousLoginDetected",
+                GetIpAddress(),
+                GetDevice(),
+                "Login from a new IP address or device");
+
+            _backgroundJobService.EnqueueEmail(user.Email!, "New Login Detected",
+                "A new login was detected on your account. If this was not you, please change your password immediately.");
+        }
 
         if (await _userManager.GetTwoFactorEnabledAsync(user))
         {
@@ -621,6 +659,11 @@ public class AuthService : IAuthService
             trustedDeviceToken = await CreateTrustedDeviceAsync(user);
         }
 
+        if (request.RememberDevice)
+        {
+            trustedDeviceToken = await CreateTrustedDeviceAsync(user);
+        }
+
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
 
         var refreshToken = new RefreshToken
@@ -858,8 +901,7 @@ public class AuthService : IAuthService
             .Ok(devices);
     }
 
-    public async Task<ApiResponse<string>>
-    RevokeTrustedDeviceAsync(int deviceId)
+    public async Task<ApiResponse<string>>RevokeTrustedDeviceAsync(int deviceId)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -959,9 +1001,23 @@ public class AuthService : IAuthService
                $"&digits=6";
     }
 
-    private async Task<bool> IsTrustedDeviceAsync(
-    string userId,
-    string rawToken)
+    public async Task CleanupExpiredTrustedDevicesAsync()
+    {
+        var expiredDevices = await _context.TrustedDevices
+            .Where(x =>
+                !x.IsRevoked &&
+                x.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync();
+
+        foreach (var device in expiredDevices)
+        {
+            device.IsRevoked = true;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<bool> IsTrustedDeviceAsync(string userId,string rawToken)
     {
         var tokenHash = TokenHasher.Hash(rawToken);
 
@@ -972,8 +1028,7 @@ public class AuthService : IAuthService
             x.ExpiresAt > DateTime.UtcNow);
     }
 
-    private async Task<string> CreateTrustedDeviceAsync(
-    ApplicationUser user)
+    private async Task<string> CreateTrustedDeviceAsync(ApplicationUser user)
     {
         var rawToken = Convert.ToBase64String(
             RandomNumberGenerator.GetBytes(64));
@@ -997,5 +1052,20 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         return rawToken;
+    }
+
+    private async Task<bool> IsSuspiciousLoginAsync(string userId)
+    {
+        var ip = GetIpAddress();
+        var device = GetDevice();
+
+        var hasPreviousLoginFromSameDevice = await _context.SecurityAuditLogs
+            .AnyAsync(x =>
+                x.UserId == userId &&
+                x.EventType == "LoginSuccess" &&
+                x.IpAddress == ip &&
+                x.Device == device);
+
+        return !hasPreviousLoginFromSameDevice;
     }
 }

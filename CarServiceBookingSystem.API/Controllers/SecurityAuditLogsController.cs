@@ -4,13 +4,14 @@ using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
 [Route("api/v{version:apiVersion}/security-audit-logs")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize]
 public class SecurityAuditLogsController : ControllerBase
 {
     private readonly ISecurityAuditQueryService _queryService;
@@ -21,9 +22,24 @@ public class SecurityAuditLogsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> GetLogs([FromQuery] PagedRequest request)
     {
         var result = await _queryService.GetLogsAsync(request);
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("my-activity")]
+    public async Task<IActionResult> GetMyActivity([FromQuery] PagedRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var result = await _queryService.GetMyLogsAsync(userId, request);
+
         return Ok(result);
     }
 }
