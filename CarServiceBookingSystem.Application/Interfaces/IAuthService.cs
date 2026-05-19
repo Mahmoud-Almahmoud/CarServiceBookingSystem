@@ -28,4 +28,5 @@ public interface IAuthService
     Task<ApiResponse<string>> RevokeTrustedDeviceAsync(int deviceId);
     Task<ApiResponse<string>> RevokeAllTrustedDevicesAsync();
     Task CleanupExpiredTrustedDevicesAsync();
+    
 }
