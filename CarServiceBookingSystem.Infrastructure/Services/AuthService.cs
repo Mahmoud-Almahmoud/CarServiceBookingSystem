@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace CarServiceBookingSystem.Infrastructure.Services;
 
@@ -254,16 +255,26 @@ public class AuthService : IAuthService
 
         if (await _userManager.GetTwoFactorEnabledAsync(user))
         {
-            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            var isTrusted = false;
+
+            if (!string.IsNullOrWhiteSpace(request.TrustedDeviceToken))
             {
-                UserId = user.Id,
-                Email = user.Email!,
-                FullName = user.FullName,
-                RequiresTwoFactor = true
-            }, "Two-factor authentication required"); 
+                isTrusted = await IsTrustedDeviceAsync(
+                    user.Id,
+                    request.TrustedDeviceToken);
+            }
+
+            if (!isTrusted)
+            {
+                return ApiResponse<AuthResponse>.Ok(new AuthResponse
+                {
+                    UserId = user.Id,
+                    Email = user.Email!,
+                    FullName = user.FullName,
+                    RequiresTwoFactor = true
+                }, "Two-factor authentication required");
+            }
         }
-
-
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -603,6 +614,12 @@ public class AuthService : IAuthService
         if (!isValid)
             return ApiResponse<AuthResponse>.Fail("Invalid verification code");
 
+        string? trustedDeviceToken = null;
+
+        if (request.RememberDevice)
+        {
+            trustedDeviceToken = await CreateTrustedDeviceAsync(user);
+        }
 
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
 
@@ -647,7 +664,8 @@ public class AuthService : IAuthService
             AccessToken = accessToken,
             RefreshToken = rawRefreshToken,
             SessionId = refreshToken.Id,
-            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
+            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60),
+            TrustedDeviceToken = trustedDeviceToken
         }, "Login successful");
     }
 
@@ -836,5 +854,45 @@ public class AuthService : IAuthService
                $"?secret={unformattedKey}" +
                $"&issuer={Uri.EscapeDataString(issuer)}" +
                $"&digits=6";
+    }
+
+    private async Task<bool> IsTrustedDeviceAsync(
+    string userId,
+    string rawToken)
+    {
+        var tokenHash = TokenHasher.Hash(rawToken);
+
+        return await _context.TrustedDevices.AnyAsync(x =>
+            x.UserId == userId &&
+            x.TokenHash == tokenHash &&
+            !x.IsRevoked &&
+            x.ExpiresAt > DateTime.UtcNow);
+    }
+
+    private async Task<string> CreateTrustedDeviceAsync(
+    ApplicationUser user)
+    {
+        var rawToken = Convert.ToBase64String(
+            RandomNumberGenerator.GetBytes(64));
+
+        var trustedDevice = new TrustedDevice
+        {
+            UserId = user.Id,
+            TokenHash = TokenHasher.Hash(rawToken),
+            DeviceName = GetDevice(),
+            IpAddress = GetIpAddress(),
+            UserAgent = _httpContextAccessor
+                .HttpContext?
+                .Request
+                .Headers["User-Agent"]
+                .ToString(),
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsRevoked = false
+        };
+
+        await _context.TrustedDevices.AddAsync(trustedDevice);
+        await _context.SaveChangesAsync();
+
+        return rawToken;
     }
 }
