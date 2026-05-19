@@ -24,4 +24,9 @@ public interface IAuthService
     Task<ApiResponse<RecoveryCodesResponse>> GenerateRecoveryCodesAsync();
     Task<ApiResponse<AuthResponse>> LoginWithRecoveryCodeAsync(LoginRecoveryCodeRequest request);
     Task<ApiResponse<byte[]>> GetTwoFactorQrCodeAsync();
+    Task<ApiResponse<List<TrustedDeviceResponse>>> GetTrustedDevicesAsync();
+
+    Task<ApiResponse<string>> RevokeTrustedDeviceAsync(int deviceId);
+
+    Task<ApiResponse<string>> RevokeAllTrustedDevicesAsync();
 }

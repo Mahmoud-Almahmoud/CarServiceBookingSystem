@@ -75,6 +75,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Booking>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<Payment>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RefreshToken>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<TrustedDevice>().HasQueryFilter(x => !x.IsDeleted);
 
         builder.Entity<CarBrand>()
             .HasMany(x => x.Models)
