@@ -242,8 +242,8 @@ public class AuthService : IAuthService
         }
         await _context.SaveChangesAsync();
 
-        //_backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
-        //    "Your password was changed successfully. If this was not you, please contact support immediately.");
+        _backgroundJobService.EnqueueEmail(user.Email!, "Password Changed",
+            "Your password was changed successfully. If this was not you, please contact support immediately.");
         await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
         return ApiResponse<string>.Ok("Password changed successfully");
     }
@@ -287,8 +287,8 @@ public class AuthService : IAuthService
                 GetDevice(),
                 "Login from a new IP address or device");
 
-            //_backgroundJobService.EnqueueEmail(user.Email!,"New Login Detected",
-            //    "A new login was detected on your account. If this was not you, please change your password immediately.");
+            _backgroundJobService.EnqueueEmail(user.Email!, "New Login Detected",
+                "A new login was detected on your account. If this was not you, please change your password immediately.");
         }
 
         if (await _userManager.GetTwoFactorEnabledAsync(user))
