@@ -782,6 +782,22 @@ Logs/log-yyyyMMdd.txt
 
 ---
 
+## GeoLite2 Database Setup
+
+Download the free GeoLite2 City database from MaxMind:
+
+https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/
+
+Place:
+
+GeoLite2-City.mmdb
+
+inside:
+
+CarServiceBookingSystem.API/
+
+---
+
 # Deployment Options
 
 ## Docker VPS

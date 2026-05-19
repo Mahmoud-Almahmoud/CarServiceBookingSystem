@@ -4,7 +4,6 @@ using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
-using CarServiceBookingSystem.Infrastructure.Services;
 using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -19,14 +18,9 @@ public class AuthServiceTests
     [Fact]
     public async Task RegisterAsync_Should_Fail_When_Email_Already_Exists()
     {
-        // Arrange
         await using var context = TestDbContextFactory.CreateDbContext();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("test@test.com"))
@@ -37,33 +31,16 @@ public class AuthServiceTests
                 FullName = "Test User"
             });
 
-        var tokenServiceMock = new Mock<ITokenService>();
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object,
-    securityAuditServiceMock.Object,
-    qrCodeServiceMock.Object);
-
-        var request = new RegisterRequest
+        var result = await authService.RegisterAsync(new RegisterRequest
         {
             FullName = "Test User",
             Email = "test@test.com",
             PhoneNumber = "0500000000",
             Password = "Test123!"
-        };
+        });
 
-        // Act
-        var result = await authService.RegisterAsync(request);
-
-        // Assert
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Email already exists");
     }
@@ -72,15 +49,14 @@ public class AuthServiceTests
     public async Task RegisterAsync_Should_Create_User_And_Return_Tokens()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var tokenServiceMock = new Mock<ITokenService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
-    .Setup(x => x.GenerateEmailConfirmationTokenAsync(It.IsAny<ApplicationUser>()))
-    .ReturnsAsync("email-confirmation-token");
+            .Setup(x => x.GenerateEmailConfirmationTokenAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync("email-confirmation-token");
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("test@test.com"))
@@ -98,9 +74,6 @@ public class AuthServiceTests
             .Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(new List<string> { "User" });
 
-
-        var tokenServiceMock = new Mock<ITokenService>();
-
         tokenServiceMock
             .Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>()))
             .ReturnsAsync("access-token");
@@ -109,27 +82,19 @@ public class AuthServiceTests
             .Setup(x => x.GenerateRefreshToken())
             .Returns("refresh-token");
 
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            tokenServiceMock: tokenServiceMock,
+            backgroundJobServiceMock: backgroundJobServiceMock);
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var request = new RegisterRequest
+        var result = await authService.RegisterAsync(new RegisterRequest
         {
             FullName = "Test User",
             Email = "test@test.com",
             PhoneNumber = "0500000000",
             Password = "Test123!"
-        };
-
-        var result = await authService.RegisterAsync(request);
+        });
 
         result.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
@@ -137,48 +102,33 @@ public class AuthServiceTests
         result.Data.RefreshToken.Should().Be("refresh-token");
 
         context.RefreshTokens.Count().Should().Be(1);
+
         backgroundJobServiceMock.Verify(x =>
-    x.EnqueueEmail(
-        "test@test.com",
-        "Confirm your email",
-        It.Is<string>(body => body.Contains("confirm"))),
-    Times.Once);
+            x.EnqueueEmail(
+                "test@test.com",
+                "Confirm your email",
+                It.Is<string>(body => body.Contains("email-confirmation-token"))),
+            Times.Once);
     }
 
     [Fact]
     public async Task LoginAsync_Should_Fail_When_User_Not_Found()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
-         .Setup(x => x.FindByEmailAsync("missing@test.com"))
-         .ReturnsAsync((ApplicationUser?)null);
+            .Setup(x => x.FindByEmailAsync("missing@test.com"))
+            .ReturnsAsync((ApplicationUser?)null);
 
-        var tokenServiceMock = new Mock<ITokenService>();
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        var authService = new AuthService(
-     userManagerMock.Object,
-     tokenServiceMock.Object,
-     context,
-     httpContextAccessor,
-     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var request = new LoginRequest
+        var result = await authService.LoginAsync(new LoginRequest
         {
             Email = "missing@test.com",
             Password = "Test123!"
-        };
-
-        var result = await authService.LoginAsync(request);
+        });
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Invalid credentials");
@@ -188,10 +138,6 @@ public class AuthServiceTests
     public async Task LoginAsync_Should_Return_Tokens_When_Credentials_Are_Valid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -201,55 +147,30 @@ public class AuthServiceTests
             FullName = "Test User"
         };
 
-        var users = new List<ApplicationUser> { user }.AsQueryable();
-
         var userManagerMock = UserManagerMockHelper.Create();
-
-        userManagerMock
-            .Setup(x => x.FindByEmailAsync("test@test.com"))
-            .ReturnsAsync(user);
-
-        userManagerMock
-            .Setup(x => x.CheckPasswordAsync(user, "Test123!"))
-            .ReturnsAsync(true);
-
-        userManagerMock
-            .Setup(x => x.GetRolesAsync(user))
-            .ReturnsAsync(new List<string> { "User" });
-        userManagerMock
-    .Setup(x => x.IsEmailConfirmedAsync(user))
-    .ReturnsAsync(true);
-
-
-
         var tokenServiceMock = new Mock<ITokenService>();
 
-        tokenServiceMock
-            .Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>()))
-            .ReturnsAsync("access-token");
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.CheckPasswordAsync(user, "Test123!")).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.GetTwoFactorEnabledAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "User" });
+        userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
 
-        tokenServiceMock
-            .Setup(x => x.GenerateRefreshToken())
-            .Returns("refresh-token");
+        tokenServiceMock.Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>())).ReturnsAsync("access-token");
+        tokenServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            tokenServiceMock: tokenServiceMock);
 
-        var request = new LoginRequest
+        var result = await authService.LoginAsync(new LoginRequest
         {
             Email = "test@test.com",
             Password = "Test123!"
-        };
-
-        var result = await authService.LoginAsync(request);
+        });
 
         result.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
@@ -264,49 +185,31 @@ public class AuthServiceTests
     public async Task RefreshTokenAsync_Should_Fail_When_Token_Is_Invalid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var request = new RefreshTokenRequest
+        var result = await authService.RefreshTokenAsync(new RefreshTokenRequest
         {
             RefreshToken = "invalid-token"
-        };
-
-        var result = await authService.RefreshTokenAsync(request);
+        });
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Invalid or expired refresh token");
     }
+
     [Fact]
     public async Task RefreshTokenAsync_Should_Return_New_Tokens_When_Token_Is_Valid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         context.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user-id",
             Token = TokenHasher.Hash("old-refresh-token"),
             ExpiresAt = DateTime.UtcNow.AddDays(1),
-            IsRevoked = false
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
         });
 
         await context.SaveChangesAsync();
@@ -319,48 +222,26 @@ public class AuthServiceTests
         };
 
         var userManagerMock = UserManagerMockHelper.Create();
-
-        userManagerMock
-            .Setup(x => x.FindByIdAsync("user-id"))
-            .ReturnsAsync(user);
-
-        userManagerMock
-            .Setup(x => x.GetRolesAsync(user))
-            .ReturnsAsync(new List<string> { "User" });
-
         var tokenServiceMock = new Mock<ITokenService>();
 
-        tokenServiceMock
-            .Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>()))
-            .ReturnsAsync("new-access-token");
+        userManagerMock.Setup(x => x.FindByIdAsync("user-id")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "User" });
 
-        tokenServiceMock
-            .Setup(x => x.GenerateRefreshToken())
-            .Returns("new-refresh-token");
+        tokenServiceMock.Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>())).ReturnsAsync("new-access-token");
+        tokenServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("new-refresh-token");
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-                                new Claim("session_id", "1")
-            ], "TestAuth"));
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var httpContextAccessor = CreateHttpContextAccessor("user-id", "1");
 
-        var request = new RefreshTokenRequest
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            tokenServiceMock: tokenServiceMock,
+            httpContextAccessor: httpContextAccessor);
+
+        var result = await authService.RefreshTokenAsync(new RefreshTokenRequest
         {
             RefreshToken = "old-refresh-token"
-        };
-
-        var result = await authService.RefreshTokenAsync(request);
+        });
 
         result.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
@@ -368,9 +249,9 @@ public class AuthServiceTests
         result.Data.RefreshToken.Should().Be("new-refresh-token");
 
         context.RefreshTokens.Count().Should().Be(2);
-        var oldHashedToken = TokenHasher.Hash("old-refresh-token");
+
         context.RefreshTokens
-            .First(x => x.Token == oldHashedToken)
+            .First(x => x.Token == TokenHasher.Hash("old-refresh-token"))
             .IsRevoked
             .Should()
             .BeTrue();
@@ -380,101 +261,62 @@ public class AuthServiceTests
     public async Task LogoutAsync_Should_Fail_When_RefreshToken_Is_Invalid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var tokenServiceMock = new Mock<ITokenService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-                new Claim("session_id", "1")
-            ], "TestAuth"));
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id", "1"));
 
-        var request = new LogoutRequest
+        var result = await authService.LogoutAsync(new LogoutRequest
         {
             RefreshToken = "invalid-token"
-        };
-
-        var result = await authService.LogoutAsync(request);
+        });
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Active session not found");
     }
+
     [Fact]
     public async Task LogoutAsync_Should_Revoke_RefreshToken_When_Token_Is_Valid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
-        context.RefreshTokens.Add(new RefreshToken
+        var refreshToken = new RefreshToken
         {
             UserId = "user-id",
             Token = TokenHasher.Hash("valid-refresh-token"),
             ExpiresAt = DateTime.UtcNow.AddDays(1),
-            IsRevoked = false
-        });
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
 
+        context.RefreshTokens.Add(refreshToken);
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-                        new Claim("session_id", "1")
-            ], "TestAuth"));
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id", refreshToken.Id.ToString()));
 
-        var request = new LogoutRequest
+        var result = await authService.LogoutAsync(new LogoutRequest
         {
             RefreshToken = "valid-refresh-token"
-        };
-
-        var result = await authService.LogoutAsync(request);
+        });
 
         result.Success.Should().BeTrue();
-        var validHashedToken = TokenHasher.Hash("valid-refresh-token");
-        var token = context.RefreshTokens
-            .First(x => x.Token == validHashedToken);
 
+        var token = context.RefreshTokens.First(x => x.Token == TokenHasher.Hash("valid-refresh-token"));
         token.IsRevoked.Should().BeTrue();
     }
+
     [Fact]
     public async Task RefreshTokenAsync_Should_Revoke_All_Tokens_When_Revoked_Token_Is_Reused()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         context.RefreshTokens.AddRange(
             new RefreshToken
@@ -498,30 +340,15 @@ public class AuthServiceTests
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var request = new RefreshTokenRequest
+        var result = await authService.RefreshTokenAsync(new RefreshTokenRequest
         {
             RefreshToken = "reused-token"
-        };
-
-        var result = await authService.RefreshTokenAsync(request);
+        });
 
         result.Success.Should().BeFalse();
-        result.Message.Should().Be(
-            "Refresh token reuse detected. All sessions have been revoked.");
+        result.Message.Should().Be("Refresh token reuse detected. All sessions have been revoked.");
 
         context.RefreshTokens
             .Where(x => x.UserId == "user-id")
@@ -529,14 +356,11 @@ public class AuthServiceTests
             .Should()
             .BeTrue();
     }
+
     [Fact]
     public async Task GetActiveSessionsAsync_Should_Return_Only_Active_User_Sessions()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         context.RefreshTokens.AddRange(
             new RefreshToken
@@ -571,25 +395,11 @@ public class AuthServiceTests
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id")
-            ], "TestAuth"));
-
-        var authService = new AuthService(
-     userManagerMock.Object,
-     tokenServiceMock.Object,
-     context,
-     httpContextAccessor,
-     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id"));
 
         var result = await authService.GetActiveSessionsAsync();
 
@@ -597,14 +407,11 @@ public class AuthServiceTests
         result.Data.Should().HaveCount(1);
         result.Data![0].Device.Should().Be("Chrome");
     }
+
     [Fact]
     public async Task RevokeSessionAsync_Should_Revoke_Selected_Session()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var refreshToken = new RefreshToken
         {
@@ -619,26 +426,11 @@ public class AuthServiceTests
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim("session_id", "999")
-            ], "TestAuth"));
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id", "999"));
 
         var result = await authService.RevokeSessionAsync(refreshToken.Id);
 
@@ -649,14 +441,11 @@ public class AuthServiceTests
         token!.IsRevoked.Should().BeTrue();
         token.RevocationReason.Should().Be("Session revoked by user");
     }
+
     [Fact]
     public async Task RevokeSessionAsync_Should_Fail_When_Revoking_Current_Session()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var refreshToken = new RefreshToken
         {
@@ -671,40 +460,22 @@ public class AuthServiceTests
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim("session_id", refreshToken.Id.ToString())
-            ], "TestAuth"));
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id", refreshToken.Id.ToString()));
 
         var result = await authService.RevokeSessionAsync(refreshToken.Id);
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("You cannot revoke the current session. Use logout instead.");
     }
+
     [Fact]
     public async Task LogoutAllDevicesAsync_Should_Revoke_All_Active_User_Tokens()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         context.RefreshTokens.AddRange(
             new RefreshToken
@@ -735,25 +506,11 @@ public class AuthServiceTests
         await context.SaveChangesAsync();
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var tokenServiceMock = new Mock<ITokenService>();
 
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id")
-            ], "TestAuth"));
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id"));
 
         var result = await authService.LogoutAllDevicesAsync();
 
@@ -776,10 +533,6 @@ public class AuthServiceTests
     public async Task LoginAsync_Should_Fail_When_User_Is_Locked_Out()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -791,30 +544,11 @@ public class AuthServiceTests
 
         var userManagerMock = UserManagerMockHelper.Create();
 
-        userManagerMock
-            .Setup(x => x.FindByEmailAsync("locked@test.com"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByEmailAsync("locked@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(true);
 
-        userManagerMock
-            .Setup(x => x.IsLockedOutAsync(user))
-            .ReturnsAsync(true);
-        userManagerMock
-    .Setup(x => x.IsEmailConfirmedAsync(user))
-    .ReturnsAsync(true);
-
-        var tokenServiceMock = new Mock<ITokenService>();
-
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
         var result = await authService.LoginAsync(new LoginRequest
         {
@@ -825,14 +559,11 @@ public class AuthServiceTests
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Account is temporarily locked. Try again later.");
     }
+
     [Fact]
     public async Task LoginAsync_Should_Call_AccessFailed_When_Password_Is_Invalid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -844,38 +575,13 @@ public class AuthServiceTests
 
         var userManagerMock = UserManagerMockHelper.Create();
 
-        userManagerMock
-            .Setup(x => x.FindByEmailAsync("test@test.com"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.CheckPasswordAsync(user, "Wrong123!")).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.AccessFailedAsync(user)).ReturnsAsync(IdentityResult.Success);
 
-        userManagerMock
-            .Setup(x => x.IsLockedOutAsync(user))
-            .ReturnsAsync(false);
-
-        userManagerMock
-            .Setup(x => x.CheckPasswordAsync(user, "Wrong123!"))
-            .ReturnsAsync(false);
-
-        userManagerMock
-            .Setup(x => x.AccessFailedAsync(user))
-            .ReturnsAsync(IdentityResult.Success);
-        userManagerMock
-    .Setup(x => x.IsEmailConfirmedAsync(user))
-    .ReturnsAsync(true);
-
-        var tokenServiceMock = new Mock<ITokenService>();
-
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-     userManagerMock.Object,
-     tokenServiceMock.Object,
-     context,
-     httpContextAccessor,
-     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
         var result = await authService.LoginAsync(new LoginRequest
         {
@@ -893,44 +599,25 @@ public class AuthServiceTests
     public async Task ConfirmEmailAsync_Should_Fail_When_User_Not_Found()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
             .Setup(x => x.FindByIdAsync("missing-user-id"))
             .ReturnsAsync((ApplicationUser?)null);
 
-        var tokenServiceMock = new Mock<ITokenService>();
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var result = await authService.ConfirmEmailAsync(
-            "missing-user-id",
-            "token");
+        var result = await authService.ConfirmEmailAsync("missing-user-id", "token");
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("User not found");
     }
+
     [Fact]
     public async Task ConfirmEmailAsync_Should_Return_Success_When_Token_Is_Valid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -941,116 +628,67 @@ public class AuthServiceTests
 
         var userManagerMock = UserManagerMockHelper.Create();
 
-        userManagerMock
-            .Setup(x => x.FindByIdAsync("user-id"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByIdAsync("user-id")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.ConfirmEmailAsync(user, "valid-token")).ReturnsAsync(IdentityResult.Success);
 
-        userManagerMock
-            .Setup(x => x.ConfirmEmailAsync(user, "valid-token"))
-            .ReturnsAsync(IdentityResult.Success);
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var tokenServiceMock = new Mock<ITokenService>();
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var result = await authService.ConfirmEmailAsync(
-            "user-id",
-            "valid-token");
+        var result = await authService.ConfirmEmailAsync("user-id", "valid-token");
 
         result.Success.Should().BeTrue();
         result.Data.Should().Be("Email confirmed successfully");
     }
+
     [Fact]
     public async Task ForgotPasswordAsync_Should_Return_Generic_Message_When_User_Not_Found()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("missing@test.com"))
             .ReturnsAsync((ApplicationUser?)null);
 
-        var tokenServiceMock = new Mock<ITokenService>();
-        var httpContextAccessor = new HttpContextAccessor
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
+
+        var result = await authService.ForgotPasswordAsync(new ForgotPasswordRequest
         {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var result = await authService.ForgotPasswordAsync(
-            new ForgotPasswordRequest
-            {
-                Email = "missing@test.com"
-            });
+            Email = "missing@test.com"
+        });
 
         result.Success.Should().BeTrue();
         result.Data.Should().Be("If the email exists, a reset password link has been sent.");
     }
+
     [Fact]
     public async Task ResetPasswordAsync_Should_Fail_When_User_Not_Found()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
+
         var userManagerMock = UserManagerMockHelper.Create();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("missing@test.com"))
             .ReturnsAsync((ApplicationUser?)null);
 
-        var tokenServiceMock = new Mock<ITokenService>();
-        var httpContextAccessor = new HttpContextAccessor
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
+
+        var result = await authService.ResetPasswordAsync(new ResetPasswordRequest
         {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var result = await authService.ResetPasswordAsync(
-            new ResetPasswordRequest
-            {
-                Email = "missing@test.com",
-                Token = "token",
-                NewPassword = "NewPass123!"
-            });
+            Email = "missing@test.com",
+            Token = "token",
+            NewPassword = "NewPass123!"
+        });
 
         result.Success.Should().BeFalse();
         result.Message.Should().Be("Invalid reset request");
     }
+
     [Fact]
     public async Task ResetPasswordAsync_Should_Return_Success_When_Token_Is_Valid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var emailServiceMock = new Mock<IEmailService>();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -1061,34 +699,17 @@ public class AuthServiceTests
 
         var userManagerMock = UserManagerMockHelper.Create();
 
-        userManagerMock
-            .Setup(x => x.FindByEmailAsync("test@test.com"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.ResetPasswordAsync(user, "valid-token", "NewPass123!")).ReturnsAsync(IdentityResult.Success);
 
-        userManagerMock
-            .Setup(x => x.ResetPasswordAsync(user, "valid-token", "NewPass123!"))
-            .ReturnsAsync(IdentityResult.Success);
+        var authService = AuthServiceTestFactory.Create(context, userManagerMock);
 
-        var tokenServiceMock = new Mock<ITokenService>();
-        var httpContextAccessor = new HttpContextAccessor
+        var result = await authService.ResetPasswordAsync(new ResetPasswordRequest
         {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        var authService = new AuthService(
-    userManagerMock.Object,
-    tokenServiceMock.Object,
-    context,
-    httpContextAccessor,
-    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
-
-        var result = await authService.ResetPasswordAsync(
-            new ResetPasswordRequest
-            {
-                Email = "test@test.com",
-                Token = "valid-token",
-                NewPassword = "NewPass123!"
-            });
+            Email = "test@test.com",
+            Token = "valid-token",
+            NewPassword = "NewPass123!"
+        });
 
         result.Success.Should().BeTrue();
         result.Data.Should().Be("Password reset successfully");
@@ -1098,9 +719,6 @@ public class AuthServiceTests
     public async Task ChangePasswordAsync_Should_Return_Success_When_Password_Changed()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -1110,36 +728,17 @@ public class AuthServiceTests
         };
 
         var userManagerMock = UserManagerMockHelper.Create();
+        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
 
-        userManagerMock
-            .Setup(x => x.FindByIdAsync("user-id"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByIdAsync("user-id")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.ChangePasswordAsync(user, "OldPass123!", "NewPass123!")).ReturnsAsync(IdentityResult.Success);
 
-        userManagerMock
-            .Setup(x => x.ChangePasswordAsync(user, "OldPass123!", "NewPass123!"))
-            .ReturnsAsync(IdentityResult.Success);
-
-        var tokenServiceMock = new Mock<ITokenService>();
-
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id")
-            ], "TestAuth"));
-
-        var emailServiceMock = new Mock<IEmailService>();
-
-        var authService = new AuthService(
-            userManagerMock.Object,
-            tokenServiceMock.Object,
+        var authService = AuthServiceTestFactory.Create(
             context,
-            httpContextAccessor,
-            backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id"),
+            backgroundJobServiceMock: backgroundJobServiceMock);
+
         var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
         {
             CurrentPassword = "OldPass123!",
@@ -1148,20 +747,19 @@ public class AuthServiceTests
 
         result.Success.Should().BeTrue();
         result.Data.Should().Be("Password changed successfully");
+
         backgroundJobServiceMock.Verify(x =>
-    x.EnqueueEmail(
-        "test@test.com",
-        "Password Changed",
-        It.Is<string>(body => body.Contains("password was changed"))),
-    Times.Once);
+            x.EnqueueEmail(
+                "test@test.com",
+                "Password Changed",
+                It.Is<string>(body => body.Contains("password was changed"))),
+            Times.Once);
     }
 
     [Fact]
     public async Task ChangePasswordAsync_Should_Fail_When_Current_Password_Is_Invalid()
     {
         await using var context = TestDbContextFactory.CreateDbContext();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var user = new ApplicationUser
         {
@@ -1171,40 +769,19 @@ public class AuthServiceTests
         };
 
         var userManagerMock = UserManagerMockHelper.Create();
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        userManagerMock
-            .Setup(x => x.FindByIdAsync("user-id"))
-            .ReturnsAsync(user);
 
+        userManagerMock.Setup(x => x.FindByIdAsync("user-id")).ReturnsAsync(user);
         userManagerMock
             .Setup(x => x.ChangePasswordAsync(user, "WrongPass123!", "NewPass123!"))
-            .ReturnsAsync(IdentityResult.Failed(
-                new IdentityError
-                {
-                    Description = "Incorrect password."
-                }));
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError
+            {
+                Description = "Incorrect password."
+            }));
 
-        var tokenServiceMock = new Mock<ITokenService>();
-
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id")
-            ], "TestAuth"));
-
-        var emailServiceMock = new Mock<IEmailService>();
-
-        var authService = new AuthService(
-            userManagerMock.Object,
-            tokenServiceMock.Object,
+        var authService = AuthServiceTestFactory.Create(
             context,
-            httpContextAccessor,
-            backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id"));
 
         var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
         {
@@ -1261,40 +838,13 @@ public class AuthServiceTests
 
         var userManagerMock = UserManagerMockHelper.Create();
 
-        userManagerMock
-            .Setup(x => x.FindByIdAsync("user-id"))
-            .ReturnsAsync(user);
+        userManagerMock.Setup(x => x.FindByIdAsync("user-id")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.ChangePasswordAsync(user, "OldPass123!", "NewPass123!")).ReturnsAsync(IdentityResult.Success);
 
-        userManagerMock
-            .Setup(x => x.ChangePasswordAsync(user, "OldPass123!", "NewPass123!"))
-            .ReturnsAsync(IdentityResult.Success);
-
-        var tokenServiceMock = new Mock<ITokenService>();
-
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext()
-        };
-
-        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, "user-id"),
-                new Claim("session_id", currentToken.Id.ToString())
-            ], "TestAuth"));
-
-        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
-        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
-        var qrCodeServiceMock = new Mock<IQrCodeService>();
-
-        var authService = new AuthService(
-            userManagerMock.Object,
-            tokenServiceMock.Object,
+        var authService = AuthServiceTestFactory.Create(
             context,
-            httpContextAccessor,
-            backgroundJobServiceMock.Object,
-            securityAuditServiceMock.Object,
-            qrCodeServiceMock.Object);
+            userManagerMock,
+            httpContextAccessor: CreateHttpContextAccessor("user-id", currentToken.Id.ToString()));
 
         var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
         {
@@ -1317,4 +867,179 @@ public class AuthServiceTests
             .BeTrue();
     }
 
+    [Fact]
+    public async Task LoginAsync_Should_Log_SuspiciousGeoLogin_When_Login_From_New_Location()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.SecurityAuditLogs.Add(new SecurityAuditLog
+        {
+            UserId = "user-id",
+            EventType = "LoginSuccess",
+            IpAddress = "1.1.1.1",
+            Device = "Chrome",
+            Country = "United Arab Emirates",
+            City = "Abu Dhabi",
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        });
+
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            UserName = "test@test.com",
+            FullName = "Test User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var geoLocationServiceMock = new Mock<IGeoLocationService>();
+
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.CheckPasswordAsync(user, "Test123!")).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.GetTwoFactorEnabledAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "User" });
+        userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        tokenServiceMock.Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>())).ReturnsAsync("access-token");
+        tokenServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
+
+        geoLocationServiceMock
+            .Setup(x => x.GetLocationAsync(It.IsAny<string?>()))
+            .ReturnsAsync(new GeoLocationResult
+            {
+                Country = "Germany",
+                City = "Berlin"
+            });
+
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            tokenServiceMock: tokenServiceMock,
+            securityAuditServiceMock: securityAuditServiceMock,
+            geoLocationServiceMock: geoLocationServiceMock);
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = "test@test.com",
+            Password = "Test123!"
+        });
+
+        result.Success.Should().BeTrue();
+
+        securityAuditServiceMock.Verify(x =>
+            x.LogAsync(
+                "user-id",
+                "SuspiciousLoginDetected",
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.Is<string?>(details => details!.Contains("Login from a new IP address or device")),
+                "Germany",
+                "Berlin"),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginAsync_Should_Not_Log_SuspiciousGeoLogin_When_Login_From_Known_Location()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.SecurityAuditLogs.Add(new SecurityAuditLog
+        {
+            UserId = "user-id",
+            EventType = "LoginSuccess",
+            Country = "Germany",
+            City = "Berlin",
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        });
+
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            UserName = "test@test.com",
+            FullName = "Test User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+        var tokenServiceMock = new Mock<ITokenService>();
+        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var geoLocationServiceMock = new Mock<IGeoLocationService>();
+
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.CheckPasswordAsync(user, "Test123!")).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.GetTwoFactorEnabledAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "User" });
+        userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        tokenServiceMock.Setup(x => x.CreateAccessTokenAsync(It.IsAny<AuthUser>())).ReturnsAsync("access-token");
+        tokenServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
+
+        geoLocationServiceMock
+            .Setup(x => x.GetLocationAsync(It.IsAny<string?>()))
+            .ReturnsAsync(new GeoLocationResult
+            {
+                Country = "Germany",
+                City = "Berlin"
+            });
+
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            tokenServiceMock: tokenServiceMock,
+            securityAuditServiceMock: securityAuditServiceMock,
+            geoLocationServiceMock: geoLocationServiceMock);
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = "test@test.com",
+            Password = "Test123!"
+        });
+
+        result.Success.Should().BeTrue();
+
+        securityAuditServiceMock.Verify(x =>
+            x.LogAsync(
+                "user-id",
+                "SuspiciousGeoLoginDetected",
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    private static HttpContextAccessor CreateHttpContextAccessor(
+        string userId,
+        string? sessionId = null)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId)
+        };
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            claims.Add(new Claim("session_id", sessionId));
+        }
+
+        return new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(claims, "TestAuth"))
+            }
+        };
+    }
 }
