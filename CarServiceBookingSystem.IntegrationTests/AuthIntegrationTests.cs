@@ -1,10 +1,14 @@
-﻿using CarServiceBookingSystem.Infrastructure.Persistence;
+﻿using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.DTOs.Auth;
+using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Infrastructure.Authentication;
+using CarServiceBookingSystem.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 
 namespace CarServiceBookingSystem.IntegrationTests;
 
@@ -477,6 +481,84 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         changePasswordResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
         body.Should().Contain("Password changed successfully");
+    }
+
+    [Fact]
+    public async Task ChangePassword_Should_Revoke_Other_Sessions_And_TrustedDevices()
+    {
+        var email = "password-change@test.com";
+
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Test User",
+            Email = email,
+            PhoneNumber = "050000000",
+            Password = "OldPass123!"
+        };
+
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            registerRequest);
+
+        var registerBody = await registerResponse.Content
+            .ReadFromJsonAsync<ApiResponse<AuthResponse>>();
+
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        registerBody.Should().NotBeNull();
+        registerBody!.Data.Should().NotBeNull();
+
+        var accessToken = registerBody.Data!.AccessToken;
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var user = await context.Users.FirstAsync(x => x.Email == email);
+
+        user.EmailConfirmed = true;
+
+        await context.SaveChangesAsync();
+
+        context.TrustedDevices.Add(new TrustedDevice
+        {
+            UserId = user.Id,
+            TokenHash = TokenHasher.Hash("trusted-device"),
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsRevoked = false
+        });
+
+        var otherToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = TokenHasher.Hash("another-session"),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.RefreshTokens.Add(otherToken);
+
+        await context.SaveChangesAsync();
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/change-password",
+            new ChangePasswordRequest
+            {
+                CurrentPassword = "OldPass123!",
+                NewPassword = "NewPass123!"
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await context.Entry(otherToken).ReloadAsync();
+
+        var refreshedOtherToken = await context.RefreshTokens
+            .FirstAsync(x => x.Id == otherToken.Id);
+
+        refreshedOtherToken.IsRevoked.Should().BeTrue();
     }
 }
 

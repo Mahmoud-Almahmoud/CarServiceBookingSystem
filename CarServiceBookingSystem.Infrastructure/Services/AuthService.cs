@@ -220,10 +220,16 @@ public class AuthService : IAuthService
                 result.Errors.Select(x => x.Description).ToList());
         }
 
-        var currentSessionId = GetCurrentSessionId();
+        var trustedDevices = await _context.TrustedDevices.Where(x =>x.UserId == user.Id &&!x.IsRevoked).ToListAsync();
+        foreach (var device in trustedDevices)
+        {
+            device.IsRevoked = true;
+        }
+        
+        await _securityAuditService.LogAsync(user.Id,"TrustedDevicesRevokedAfterPasswordChange",GetIpAddress(),GetDevice());
 
+        var currentSessionId = GetCurrentSessionId();
         var activeTokens = await _context.RefreshTokens
-            //remove "&& (!currentSessionId.HasValue || x.Id != currentSessionId.Value))"  to revoke all sessions including current one
             .Where(x =>x.UserId == user.Id && !x.IsRevoked && (!currentSessionId.HasValue || x.Id != currentSessionId.Value))
             .ToListAsync();
 
@@ -234,9 +240,10 @@ public class AuthService : IAuthService
             token.RevokedByIp = GetIpAddress();
             token.RevocationReason = "Password changed";
         }
+        await _context.SaveChangesAsync();
 
-        _backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
-            "Your password was changed successfully. If this was not you, please contact support immediately.");
+        //_backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
+        //    "Your password was changed successfully. If this was not you, please contact support immediately.");
         await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
         return ApiResponse<string>.Ok("Password changed successfully");
     }
