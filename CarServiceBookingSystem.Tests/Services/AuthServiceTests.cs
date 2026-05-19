@@ -1217,4 +1217,104 @@ public class AuthServiceTests
         result.Errors.Should().Contain("Incorrect password.");
     }
 
+    [Fact]
+    public async Task ChangePasswordAsync_Should_Revoke_Other_Sessions_And_TrustedDevices()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        var currentToken = new RefreshToken
+        {
+            UserId = "user-id",
+            Token = TokenHasher.Hash("current-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var otherToken = new RefreshToken
+        {
+            UserId = "user-id",
+            Token = TokenHasher.Hash("other-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.RefreshTokens.AddRange(currentToken, otherToken);
+
+        context.TrustedDevices.Add(new TrustedDevice
+        {
+            UserId = "user-id",
+            TokenHash = TokenHasher.Hash("trusted-device-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsRevoked = false
+        });
+
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            FullName = "Test User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        userManagerMock
+            .Setup(x => x.FindByIdAsync("user-id"))
+            .ReturnsAsync(user);
+
+        userManagerMock
+            .Setup(x => x.ChangePasswordAsync(user, "OldPass123!", "NewPass123!"))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var tokenServiceMock = new Mock<ITokenService>();
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        httpContextAccessor.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "user-id"),
+                new Claim("session_id", currentToken.Id.ToString())
+            ], "TestAuth"));
+
+        var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
+        var authService = new AuthService(
+            userManagerMock.Object,
+            tokenServiceMock.Object,
+            context,
+            httpContextAccessor,
+            backgroundJobServiceMock.Object,
+            securityAuditServiceMock.Object,
+            qrCodeServiceMock.Object);
+
+        var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
+        {
+            CurrentPassword = "OldPass123!",
+            NewPassword = "NewPass123!"
+        });
+
+        result.Success.Should().BeTrue();
+
+        var currentSession = await context.RefreshTokens.FindAsync(currentToken.Id);
+        currentSession!.IsRevoked.Should().BeFalse();
+
+        var otherSession = await context.RefreshTokens.FindAsync(otherToken.Id);
+        otherSession!.IsRevoked.Should().BeTrue();
+
+        context.TrustedDevices
+            .Where(x => x.UserId == "user-id")
+            .All(x => x.IsRevoked)
+            .Should()
+            .BeTrue();
+    }
+
 }
