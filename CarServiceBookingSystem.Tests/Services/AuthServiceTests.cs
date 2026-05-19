@@ -10,7 +10,6 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Moq;
-using System.Net;
 using System.Security.Claims;
 
 namespace CarServiceBookingSystem.UnitTests.Services;
@@ -27,6 +26,7 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("test@test.com"))
@@ -48,7 +48,9 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object,
+    securityAuditServiceMock.Object,
+    qrCodeServiceMock.Object);
 
         var request = new RegisterRequest
         {
@@ -74,6 +76,7 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
     .Setup(x => x.GenerateEmailConfirmationTokenAsync(It.IsAny<ApplicationUser>()))
@@ -116,7 +119,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new RegisterRequest
         {
@@ -150,6 +153,7 @@ public class AuthServiceTests
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var userManagerMock = UserManagerMockHelper.Create();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
          .Setup(x => x.FindByEmailAsync("missing@test.com"))
@@ -166,7 +170,7 @@ public class AuthServiceTests
      tokenServiceMock.Object,
      context,
      httpContextAccessor,
-     emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new LoginRequest
         {
@@ -187,6 +191,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -235,7 +241,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new LoginRequest
         {
@@ -263,6 +269,7 @@ public class AuthServiceTests
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var userManagerMock = UserManagerMockHelper.Create();
         var tokenServiceMock = new Mock<ITokenService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var httpContextAccessor = new HttpContextAccessor
         {
@@ -273,7 +280,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new RefreshTokenRequest
         {
@@ -292,6 +299,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         context.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user-id",
@@ -344,7 +353,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new RefreshTokenRequest
         {
@@ -376,6 +385,7 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var tokenServiceMock = new Mock<ITokenService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         var httpContextAccessor = new HttpContextAccessor
         {
@@ -392,7 +402,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new LogoutRequest
         {
@@ -411,6 +421,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         context.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user-id",
@@ -439,7 +451,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new LogoutRequest
         {
@@ -462,6 +474,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         context.RefreshTokens.AddRange(
             new RefreshToken
             {
@@ -496,7 +510,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var request = new RefreshTokenRequest
         {
@@ -522,6 +536,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         context.RefreshTokens.AddRange(
             new RefreshToken
             {
@@ -573,7 +589,7 @@ public class AuthServiceTests
      tokenServiceMock.Object,
      context,
      httpContextAccessor,
-     emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.GetActiveSessionsAsync();
 
@@ -588,6 +604,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var refreshToken = new RefreshToken
         {
             UserId = "user-id",
@@ -620,7 +638,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.RevokeSessionAsync(refreshToken.Id);
 
@@ -638,6 +656,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var refreshToken = new RefreshToken
         {
             UserId = "user-id",
@@ -670,7 +690,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.RevokeSessionAsync(refreshToken.Id);
 
@@ -684,6 +704,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         context.RefreshTokens.AddRange(
             new RefreshToken
             {
@@ -731,7 +753,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.LogoutAllDevicesAsync();
 
@@ -757,6 +779,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -790,7 +814,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.LoginAsync(new LoginRequest
         {
@@ -808,6 +832,8 @@ public class AuthServiceTests
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -849,7 +875,7 @@ public class AuthServiceTests
      tokenServiceMock.Object,
      context,
      httpContextAccessor,
-     emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+     backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.LoginAsync(new LoginRequest
         {
@@ -871,6 +897,8 @@ public class AuthServiceTests
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var userManagerMock = UserManagerMockHelper.Create();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         userManagerMock
             .Setup(x => x.FindByIdAsync("missing-user-id"))
             .ReturnsAsync((ApplicationUser?)null);
@@ -886,7 +914,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ConfirmEmailAsync(
             "missing-user-id",
@@ -902,6 +930,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -930,7 +960,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ConfirmEmailAsync(
             "user-id",
@@ -946,6 +976,7 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
         var userManagerMock = UserManagerMockHelper.Create();
 
         userManagerMock
@@ -963,7 +994,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ForgotPasswordAsync(
             new ForgotPasswordRequest
@@ -982,6 +1013,7 @@ public class AuthServiceTests
         var userManagerMock = UserManagerMockHelper.Create();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
 
         userManagerMock
             .Setup(x => x.FindByEmailAsync("missing@test.com"))
@@ -998,7 +1030,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ResetPasswordAsync(
             new ResetPasswordRequest
@@ -1018,6 +1050,8 @@ public class AuthServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -1046,7 +1080,7 @@ public class AuthServiceTests
     tokenServiceMock.Object,
     context,
     httpContextAccessor,
-    emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+    backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ResetPasswordAsync(
             new ResetPasswordRequest
@@ -1066,6 +1100,8 @@ public class AuthServiceTests
         await using var context = TestDbContextFactory.CreateDbContext();
         var backgroundJobServiceMock = new Mock<IBackgroundJobService>();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -1103,8 +1139,7 @@ public class AuthServiceTests
             tokenServiceMock.Object,
             context,
             httpContextAccessor,
-            emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
-
+            backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
         var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
         {
             CurrentPassword = "OldPass123!",
@@ -1126,6 +1161,8 @@ public class AuthServiceTests
     {
         await using var context = TestDbContextFactory.CreateDbContext();
         var securityAuditServiceMock = new Mock<ISecurityAuditService>();
+        var qrCodeServiceMock = new Mock<IQrCodeService>();
+
         var user = new ApplicationUser
         {
             Id = "user-id",
@@ -1167,7 +1204,7 @@ public class AuthServiceTests
             tokenServiceMock.Object,
             context,
             httpContextAccessor,
-            emailServiceMock.Object,backgroundJobServiceMock.Object, securityAuditServiceMock.Object);
+            backgroundJobServiceMock.Object, securityAuditServiceMock.Object, qrCodeServiceMock.Object);
 
         var result = await authService.ChangePasswordAsync(new ChangePasswordRequest
         {

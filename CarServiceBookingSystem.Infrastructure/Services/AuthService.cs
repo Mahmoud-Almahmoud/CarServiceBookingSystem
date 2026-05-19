@@ -27,7 +27,6 @@ public class AuthService : IAuthService
         UserManager<ApplicationUser> userManager,
         ITokenService tokenService,
         ApplicationDbContext context,IHttpContextAccessor httpContextAccessor,
-        IEmailService emailService,
         IBackgroundJobService backgroundJobService,
         ISecurityAuditService securityAuditService,
         IQrCodeService qrCodeService)
