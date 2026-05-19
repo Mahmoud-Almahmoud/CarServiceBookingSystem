@@ -10,4 +10,5 @@ public class AuthResponse
     public int SessionId { get; set; }
     public DateTime AccessTokenExpiresAt { get; set; }
     public bool RequiresTwoFactor { get; set; }
+    public string? TrustedDeviceToken { get; set; }
 }
