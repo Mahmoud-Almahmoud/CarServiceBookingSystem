@@ -253,6 +253,21 @@ public class AuthService : IAuthService
         }
         await _userManager.ResetAccessFailedCountAsync(user);
 
+        var isSuspicious = await IsSuspiciousLoginAsync(user.Id);
+
+        if (isSuspicious)
+        {
+            await _securityAuditService.LogAsync(
+                user.Id,
+                "SuspiciousLoginDetected",
+                GetIpAddress(),
+                GetDevice(),
+                "Login from a new IP address or device");
+
+            //_backgroundJobService.EnqueueEmail(user.Email!,"New Login Detected",
+            //    "A new login was detected on your account. If this was not you, please change your password immediately.");
+        }
+
         if (await _userManager.GetTwoFactorEnabledAsync(user))
         {
             var isTrusted = false;
@@ -975,9 +990,7 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
-    private async Task<bool> IsTrustedDeviceAsync(
-    string userId,
-    string rawToken)
+    private async Task<bool> IsTrustedDeviceAsync(string userId,string rawToken)
     {
         var tokenHash = TokenHasher.Hash(rawToken);
 
@@ -988,8 +1001,7 @@ public class AuthService : IAuthService
             x.ExpiresAt > DateTime.UtcNow);
     }
 
-    private async Task<string> CreateTrustedDeviceAsync(
-    ApplicationUser user)
+    private async Task<string> CreateTrustedDeviceAsync(ApplicationUser user)
     {
         var rawToken = Convert.ToBase64String(
             RandomNumberGenerator.GetBytes(64));
@@ -1013,5 +1025,20 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         return rawToken;
+    }
+
+    private async Task<bool> IsSuspiciousLoginAsync(string userId)
+    {
+        var ip = GetIpAddress();
+        var device = GetDevice();
+
+        var hasPreviousLoginFromSameDevice = await _context.SecurityAuditLogs
+            .AnyAsync(x =>
+                x.UserId == userId &&
+                x.EventType == "LoginSuccess" &&
+                x.IpAddress == ip &&
+                x.Device == device);
+
+        return !hasPreviousLoginFromSameDevice;
     }
 }
