@@ -22,7 +22,6 @@ namespace CarServiceBookingSystem.Domain.Entities
 
         public BookingStatus Status { get; set; }
 
-        // Navigation
         public Payment Payment { get; set; }
     }
 }

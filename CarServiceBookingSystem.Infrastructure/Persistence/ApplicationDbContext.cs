@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<SecurityAuditLog> SecurityAuditLogs => Set<SecurityAuditLog>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
