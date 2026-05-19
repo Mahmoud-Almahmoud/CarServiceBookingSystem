@@ -19,12 +19,27 @@ Production-ready backend API built with ASP.NET Core and Clean Architecture for 
 
 ---
 
+## Trusted Devices
+
+- API-friendly trusted-device system for JWT clients
+- Supports React, mobile apps, and Postman
+- Stores only hashed trusted-device tokens
+- Allows skipping 2FA on remembered devices
+- Users can view trusted devices
+- Users can revoke one device
+- Users can revoke all devices
+- Expired trusted devices are cleaned up automatically by Hangfire
+
+---
+
 ## Email Confirmation
 
 - Email confirmation token generation
 - Confirm email endpoint
 - Resend email confirmation endpoint
 - Login blocked until email is confirmed
+
+---
 
 ## Password Recovery
 
@@ -305,6 +320,9 @@ POST /api/v1/auth/resend-email-confirmation
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
 POST /api/v1/auth/change-password
+GET    /api/v1/auth/trusted-devices
+DELETE /api/v1/auth/trusted-devices/{deviceId}
+DELETE /api/v1/auth/trusted-devices
 ```
 
 ---

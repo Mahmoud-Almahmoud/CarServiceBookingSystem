@@ -2,6 +2,7 @@ using Asp.Versioning;
 using CarServiceBookingSystem.API;
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.API.Middlewares;
+using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Hangfire;
@@ -137,6 +138,10 @@ if (!app.Environment.IsEnvironment("Testing"))
             new HangfireAdminAuthorizationFilter()
         ]
     });
+    RecurringJob.AddOrUpdate<IAuthService>(
+    "cleanup-expired-trusted-devices",
+    service => service.CleanupExpiredTrustedDevicesAsync(),
+    Cron.Daily);
 }
 app.MapControllers();
 app.MapHealthChecks("/health");

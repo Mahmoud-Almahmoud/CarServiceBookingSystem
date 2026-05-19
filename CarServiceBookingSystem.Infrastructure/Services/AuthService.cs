@@ -959,6 +959,22 @@ public class AuthService : IAuthService
                $"&digits=6";
     }
 
+    public async Task CleanupExpiredTrustedDevicesAsync()
+    {
+        var expiredDevices = await _context.TrustedDevices
+            .Where(x =>
+                !x.IsRevoked &&
+                x.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync();
+
+        foreach (var device in expiredDevices)
+        {
+            device.IsRevoked = true;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     private async Task<bool> IsTrustedDeviceAsync(
     string userId,
     string rawToken)
