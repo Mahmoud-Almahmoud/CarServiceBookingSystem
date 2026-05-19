@@ -9,4 +9,5 @@ public class AuthResponse
     public string RefreshToken { get; set; } = string.Empty;
     public int SessionId { get; set; }
     public DateTime AccessTokenExpiresAt { get; set; }
+    public bool RequiresTwoFactor { get; set; }
 }

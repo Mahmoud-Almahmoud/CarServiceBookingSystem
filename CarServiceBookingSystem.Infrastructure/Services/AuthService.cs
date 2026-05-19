@@ -252,8 +252,18 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
+        if (await _userManager.GetTwoFactorEnabledAsync(user))
+        {
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                RequiresTwoFactor = true
+            }, "Two-factor authentication required");
+        }
 
-       
+
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -512,6 +522,176 @@ public class AuthService : IAuthService
         return ApiResponse<string>.Ok("Session revoked successfully");
     }
 
+    public async Task<ApiResponse<EnableTwoFactorResponse>> GetTwoFactorSetupAsync()
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<EnableTwoFactorResponse>.Fail("User is not authenticated");
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+            return ApiResponse<EnableTwoFactorResponse>.Fail("User not found");
+
+        var key = await _userManager.GetAuthenticatorKeyAsync(user);
+
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            await _userManager.ResetAuthenticatorKeyAsync(user);
+            key = await _userManager.GetAuthenticatorKeyAsync(user);
+        }
+
+        var response = new EnableTwoFactorResponse
+        {
+            SharedKey = key!,
+            AuthenticatorUri = GenerateQrCodeUri(user.Email!, key!)
+        };
+
+        return ApiResponse<EnableTwoFactorResponse>.Ok(response);
+    }
+
+    public async Task<ApiResponse<string>> EnableTwoFactorAsync(
+    VerifyTwoFactorRequest request)
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<string>.Fail("User is not authenticated");
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found");
+
+        var code = request.Code.Replace(" ", string.Empty)
+            .Replace("-", string.Empty);
+
+        var isValid = await _userManager.VerifyTwoFactorTokenAsync(
+            user,
+            _userManager.Options.Tokens.AuthenticatorTokenProvider,
+            code);
+
+        if (!isValid)
+            return ApiResponse<string>.Fail("Invalid verification code");
+
+        await _userManager.SetTwoFactorEnabledAsync(user, true);
+
+        return ApiResponse<string>.Ok("Two-factor authentication enabled successfully");
+    }
+    public async Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(
+    LoginTwoFactorRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user == null)
+            return ApiResponse<AuthResponse>.Fail("Invalid credentials");
+
+        if (!await _userManager.GetTwoFactorEnabledAsync(user))
+            return ApiResponse<AuthResponse>.Fail("Two-factor authentication is not enabled");
+
+        var code = request.Code.Replace(" ", string.Empty)
+            .Replace("-", string.Empty);
+
+        var isValid = await _userManager.VerifyTwoFactorTokenAsync(
+            user,
+            _userManager.Options.Tokens.AuthenticatorTokenProvider,
+            code);
+
+        if (!isValid)
+            return ApiResponse<AuthResponse>.Fail("Invalid verification code");
+
+        var rawRefreshToken = _tokenService.GenerateRefreshToken();
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = TokenHasher.Hash(rawRefreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = GetIpAddress(),
+            Device = GetDevice()
+        };
+
+        await _context.RefreshTokens.AddAsync(refreshToken);
+        await _context.SaveChangesAsync();
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var authUser = new AuthUser
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            Roles = roles,
+            SessionId = refreshToken.Id
+        };
+
+        var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
+
+        await _securityAuditService.LogAsync(
+            user.Id,
+            "TwoFactorLoginSuccess",
+            GetIpAddress(),
+            GetDevice());
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken,
+            SessionId = refreshToken.Id,
+            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
+        }, "Login successful");
+    }
+
+    public async Task<ApiResponse<string>> DisableTwoFactorAsync(
+    DisableTwoFactorRequest request)
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<string>.Fail("User is not authenticated");
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found");
+
+        if (!await _userManager.GetTwoFactorEnabledAsync(user))
+            return ApiResponse<string>.Fail("Two-factor authentication is not enabled");
+
+        var code = request.Code.Replace(" ", string.Empty)
+            .Replace("-", string.Empty);
+
+        var isValid = await _userManager.VerifyTwoFactorTokenAsync(
+            user,
+            _userManager.Options.Tokens.AuthenticatorTokenProvider,
+            code);
+
+        if (!isValid)
+            return ApiResponse<string>.Fail("Invalid verification code");
+
+        await _userManager.SetTwoFactorEnabledAsync(user, false);
+
+        await _securityAuditService.LogAsync(
+            user.Id,
+            "TwoFactorDisabled",
+            GetIpAddress(),
+            GetDevice());
+
+        return ApiResponse<string>.Ok("Two-factor authentication disabled successfully");
+    }
+
     private string? GetIpAddress()
     {
         return _httpContextAccessor.HttpContext?
@@ -534,5 +714,14 @@ public class AuthService : IAuthService
         return int.TryParse(value, out var sessionId)
             ? sessionId
             : null;
+    }
+    private string GenerateQrCodeUri(string email, string unformattedKey)
+    {
+        const string issuer = "CarServiceBookingSystem";
+
+        return $"otpauth://totp/{Uri.EscapeDataString(issuer)}:{Uri.EscapeDataString(email)}" +
+               $"?secret={unformattedKey}" +
+               $"&issuer={Uri.EscapeDataString(issuer)}" +
+               $"&digits=6";
     }
 }

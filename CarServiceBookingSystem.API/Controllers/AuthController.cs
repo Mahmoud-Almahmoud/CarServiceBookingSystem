@@ -160,4 +160,54 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    [Authorize]
+    [HttpGet("2fa/setup")]
+    public async Task<IActionResult> GetTwoFactorSetup()
+    {
+        var result = await _authService.GetTwoFactorSetupAsync();
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("2fa/enable")]
+    [ServiceFilter(typeof(ValidationFilter<VerifyTwoFactorRequest>))]
+    public async Task<IActionResult> EnableTwoFactor(VerifyTwoFactorRequest request)
+    {
+        var result = await _authService.EnableTwoFactorAsync(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [HttpPost("2fa/login")]
+    [ServiceFilter(typeof(ValidationFilter<LoginTwoFactorRequest>))]
+    public async Task<IActionResult> LoginWithTwoFactor(LoginTwoFactorRequest request)
+    {
+        var result = await _authService.LoginWithTwoFactorAsync(request);
+
+        if (!result.Success)
+            return Unauthorized(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("2fa/disable")]
+    [ServiceFilter(typeof(ValidationFilter<DisableTwoFactorRequest>))]
+    public async Task<IActionResult> DisableTwoFactor(DisableTwoFactorRequest request)
+    {
+        var result = await _authService.DisableTwoFactorAsync(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }

@@ -17,4 +17,8 @@ public interface IAuthService
     Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request);
     Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request);
+    Task<ApiResponse<EnableTwoFactorResponse>> GetTwoFactorSetupAsync();
+    Task<ApiResponse<string>> EnableTwoFactorAsync(VerifyTwoFactorRequest request);
+    Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(LoginTwoFactorRequest request);
+    Task<ApiResponse<string>> DisableTwoFactorAsync(DisableTwoFactorRequest request);
 }
