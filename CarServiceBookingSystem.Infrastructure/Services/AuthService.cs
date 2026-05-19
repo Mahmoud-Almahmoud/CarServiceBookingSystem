@@ -729,7 +729,7 @@ public class AuthService : IAuthService
             });
     }
 
-    public async Task<ApiResponse<AuthResponse>> LoginWithRecoveryCodeAsync(LoginTwoFactorRequest request)
+    public async Task<ApiResponse<AuthResponse>> LoginWithRecoveryCodeAsync(LoginRecoveryCodeRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -738,7 +738,7 @@ public class AuthService : IAuthService
                 .Fail("Invalid credentials");
 
         var result = await _userManager
-            .RedeemTwoFactorRecoveryCodeAsync(user, request.Code);
+            .RedeemTwoFactorRecoveryCodeAsync(user, request.RecoveryCode);
 
         if (!result.Succeeded)
         {

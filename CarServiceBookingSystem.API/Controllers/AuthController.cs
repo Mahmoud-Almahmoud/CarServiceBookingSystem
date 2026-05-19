@@ -229,9 +229,9 @@ public class AuthController : ControllerBase
 
     [HttpPost("2fa/recovery-login")]
     [EnableRateLimiting("TwoFactorPolicy")]
-    [ServiceFilter(typeof(ValidationFilter<LoginTwoFactorRequest>))]
+    [ServiceFilter(typeof(ValidationFilter<LoginRecoveryCodeRequest>))]
     public async Task<IActionResult> LoginWithRecoveryCode(
-    LoginTwoFactorRequest request)
+    LoginRecoveryCodeRequest request)
     {
         var result =
             await _authService.LoginWithRecoveryCodeAsync(request);

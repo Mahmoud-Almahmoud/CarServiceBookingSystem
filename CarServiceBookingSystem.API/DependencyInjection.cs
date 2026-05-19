@@ -50,6 +50,7 @@ namespace CarServiceBookingSystem.API
             services.AddScoped<ValidationFilter<VerifyTwoFactorRequest>>();
             services.AddScoped<ValidationFilter<LoginTwoFactorRequest>>();
             services.AddScoped<ValidationFilter<DisableTwoFactorRequest>>();
+            services.AddScoped<ValidationFilter<LoginRecoveryCodeRequest>>();
 
             services.AddControllers();
             services.AddApplication();
