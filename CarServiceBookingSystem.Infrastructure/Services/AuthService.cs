@@ -659,6 +659,11 @@ public class AuthService : IAuthService
             trustedDeviceToken = await CreateTrustedDeviceAsync(user);
         }
 
+        if (request.RememberDevice)
+        {
+            trustedDeviceToken = await CreateTrustedDeviceAsync(user);
+        }
+
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
 
         var refreshToken = new RefreshToken
@@ -859,6 +864,41 @@ public class AuthService : IAuthService
             setupResult.Data.AuthenticatorUri);
 
         return ApiResponse<byte[]>.Ok(qrBytes);
+    }
+
+    public async Task<ApiResponse<List<TrustedDeviceResponse>>>
+    GetTrustedDevicesAsync()
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return ApiResponse<List<TrustedDeviceResponse>>
+                .Fail("User is not authenticated");
+        }
+
+        var devices = await _context.TrustedDevices
+            .AsNoTracking()
+            .Where(x =>
+                x.UserId == userId &&
+                !x.IsRevoked &&
+                x.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new TrustedDeviceResponse
+            {
+                Id = x.Id,
+                DeviceName = x.DeviceName,
+                IpAddress = x.IpAddress,
+                UserAgent = x.UserAgent,
+                ExpiresAt = x.ExpiresAt,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync();
+
+        return ApiResponse<List<TrustedDeviceResponse>>
+            .Ok(devices);
     }
 
     public async Task<ApiResponse<List<TrustedDeviceResponse>>>
