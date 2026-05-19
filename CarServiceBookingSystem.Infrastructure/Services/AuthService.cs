@@ -19,7 +19,6 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly ApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IEmailService _emailService;
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly ISecurityAuditService _securityAuditService;
     private readonly IQrCodeService _qrCodeService;
@@ -38,8 +37,6 @@ public class AuthService : IAuthService
         _context = context;
         _httpContextAccessor = httpContextAccessor;
         _qrCodeService = qrCodeService;
-        
-        _emailService = emailService;
         _backgroundJobService = backgroundJobService;
         _securityAuditService = securityAuditService;
     }
@@ -255,6 +252,7 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
+
         if (await _userManager.GetTwoFactorEnabledAsync(user))
         {
             return ApiResponse<AuthResponse>.Ok(new AuthResponse
@@ -263,7 +261,7 @@ public class AuthService : IAuthService
                 Email = user.Email!,
                 FullName = user.FullName,
                 RequiresTwoFactor = true
-            }, "Two-factor authentication required");
+            }, "Two-factor authentication required"); 
         }
 
 
@@ -605,6 +603,7 @@ public class AuthService : IAuthService
 
         if (!isValid)
             return ApiResponse<AuthResponse>.Fail("Invalid verification code");
+
 
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
 
