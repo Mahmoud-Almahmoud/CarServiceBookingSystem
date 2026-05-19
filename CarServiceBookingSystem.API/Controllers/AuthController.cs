@@ -253,4 +253,34 @@ public class AuthController : ControllerBase
 
         return File(result.Data, "image/png");
     }
+
+    [Authorize]
+    [HttpGet("trusted-devices")]
+    public async Task<IActionResult> GetTrustedDevices()
+    {
+        var result = await _authService.GetTrustedDevicesAsync();
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpDelete("trusted-devices/{deviceId:int}")]
+    public async Task<IActionResult> RevokeTrustedDevice(int deviceId)
+    {
+        var result = await _authService.RevokeTrustedDeviceAsync(deviceId);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpDelete("trusted-devices")]
+    public async Task<IActionResult> RevokeAllTrustedDevices()
+    {
+        var result = await _authService.RevokeAllTrustedDevicesAsync();
+
+        return Ok(result);
+    }
 }
