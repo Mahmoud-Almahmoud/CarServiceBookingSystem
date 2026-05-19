@@ -71,4 +71,62 @@ public class SecurityAuditLogsIntegrationTests
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task GetMyActivity_Should_Return_Only_Current_User_Logs()
+    {
+        var userId = "user-123";
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                TestAuthHelper.GenerateJwt(
+                    userId,
+                    "user@test.com",
+                    "User"));
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        context.SecurityAuditLogs.AddRange(
+            new SecurityAuditLog
+            {
+                UserId = userId,
+                EventType = "LoginSuccess",
+                IpAddress = "127.0.0.1",
+                Device = "Chrome"
+            },
+            new SecurityAuditLog
+            {
+                UserId = "another-user",
+                EventType = "PasswordChanged",
+                IpAddress = "127.0.0.2",
+                Device = "Firefox"
+            });
+
+        await context.SaveChangesAsync();
+
+        var response = await _client.GetAsync(
+            "/api/v1/security-audit-logs/my-activity?pageNumber=1&pageSize=10");
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        body.Should().Contain("LoginSuccess");
+        body.Should().NotContain("PasswordChanged");
+    }
+
+    [Fact]
+    public async Task GetMyActivity_Should_Return_Unauthorized_When_User_Is_Not_Authenticated()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync(
+            "/api/v1/security-audit-logs/my-activity?pageNumber=1&pageSize=10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }
