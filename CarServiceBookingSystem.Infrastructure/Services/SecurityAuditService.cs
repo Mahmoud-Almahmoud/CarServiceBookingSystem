@@ -14,11 +14,13 @@ public class SecurityAuditService : ISecurityAuditService
     }
 
     public async Task LogAsync(
-        string userId,
-        string eventType,
-        string? ipAddress = null,
-        string? device = null,
-        string? details = null)
+    string userId,
+    string eventType,
+    string? ipAddress = null,
+    string? device = null,
+    string? details = null,
+    string? country = null,
+    string? city = null)
     {
         var log = new SecurityAuditLog
         {
@@ -26,7 +28,9 @@ public class SecurityAuditService : ISecurityAuditService
             EventType = eventType,
             IpAddress = ipAddress,
             Device = device,
-            Details = details
+            Details = details,
+            Country = country,
+            City = city
         };
 
         await _context.SecurityAuditLogs.AddAsync(log);

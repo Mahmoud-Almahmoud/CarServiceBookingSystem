@@ -28,6 +28,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# database
+GeoLite2-City.mmdb
+GeoLite2-ASN.mmdb
+*.mmdb
+
 # Publish
 publish/
 

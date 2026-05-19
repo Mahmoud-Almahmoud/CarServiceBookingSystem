@@ -7,5 +7,7 @@ public interface ISecurityAuditService
         string eventType,
         string? ipAddress = null,
         string? device = null,
-        string? details = null);
+        string? details = null,
+        string? country = null,
+        string? city = null);
 }
