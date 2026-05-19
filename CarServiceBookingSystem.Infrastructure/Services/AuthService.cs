@@ -22,6 +22,7 @@ public class AuthService : IAuthService
     private readonly IEmailService _emailService;
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly ISecurityAuditService _securityAuditService;
+    private readonly IQrCodeService _qrCodeService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -29,12 +30,14 @@ public class AuthService : IAuthService
         ApplicationDbContext context,IHttpContextAccessor httpContextAccessor,
         IEmailService emailService,
         IBackgroundJobService backgroundJobService,
-        ISecurityAuditService securityAuditService)
+        ISecurityAuditService securityAuditService,
+        IQrCodeService qrCodeService)
     {
         _userManager = userManager;
         _tokenService = tokenService;
         _context = context;
         _httpContextAccessor = httpContextAccessor;
+        _qrCodeService = qrCodeService;
         
         _emailService = emailService;
         _backgroundJobService = backgroundJobService;
@@ -553,8 +556,7 @@ public class AuthService : IAuthService
         return ApiResponse<EnableTwoFactorResponse>.Ok(response);
     }
 
-    public async Task<ApiResponse<string>> EnableTwoFactorAsync(
-    VerifyTwoFactorRequest request)
+    public async Task<ApiResponse<string>> EnableTwoFactorAsync(VerifyTwoFactorRequest request)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -583,8 +585,7 @@ public class AuthService : IAuthService
 
         return ApiResponse<string>.Ok("Two-factor authentication enabled successfully");
     }
-    public async Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(
-    LoginTwoFactorRequest request)
+    public async Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(LoginTwoFactorRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -652,8 +653,7 @@ public class AuthService : IAuthService
         }, "Login successful");
     }
 
-    public async Task<ApiResponse<string>> DisableTwoFactorAsync(
-    DisableTwoFactorRequest request)
+    public async Task<ApiResponse<string>> DisableTwoFactorAsync(DisableTwoFactorRequest request)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -690,6 +690,121 @@ public class AuthService : IAuthService
             GetDevice());
 
         return ApiResponse<string>.Ok("Two-factor authentication disabled successfully");
+    }
+
+    public async Task<ApiResponse<RecoveryCodesResponse>> GenerateRecoveryCodesAsync()
+    {
+        var userId = _httpContextAccessor.HttpContext?.User?
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<RecoveryCodesResponse>
+                .Fail("User is not authenticated");
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+            return ApiResponse<RecoveryCodesResponse>
+                .Fail("User not found");
+
+        if (!await _userManager.GetTwoFactorEnabledAsync(user))
+        {
+            return ApiResponse<RecoveryCodesResponse>
+                .Fail("Two-factor authentication is not enabled");
+        }
+
+        var codes = await _userManager
+            .GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+
+        await _securityAuditService.LogAsync(
+            user.Id,
+            "RecoveryCodesGenerated",
+            GetIpAddress(),
+            GetDevice());
+
+        return ApiResponse<RecoveryCodesResponse>.Ok(
+            new RecoveryCodesResponse
+            {
+                RecoveryCodes = codes.ToList()
+            });
+    }
+
+    public async Task<ApiResponse<AuthResponse>> LoginWithRecoveryCodeAsync(LoginTwoFactorRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user == null)
+            return ApiResponse<AuthResponse>
+                .Fail("Invalid credentials");
+
+        var result = await _userManager
+            .RedeemTwoFactorRecoveryCodeAsync(user, request.Code);
+
+        if (!result.Succeeded)
+        {
+            return ApiResponse<AuthResponse>
+                .Fail("Invalid recovery code");
+        }
+
+        var rawRefreshToken = _tokenService.GenerateRefreshToken();
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = TokenHasher.Hash(rawRefreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = GetIpAddress(),
+            Device = GetDevice()
+        };
+
+        await _context.RefreshTokens.AddAsync(refreshToken);
+        await _context.SaveChangesAsync();
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var authUser = new AuthUser
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            Roles = roles,
+            SessionId = refreshToken.Id
+        };
+
+        var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
+
+        await _securityAuditService.LogAsync(
+            user.Id,
+            "RecoveryCodeLogin",
+            GetIpAddress(),
+            GetDevice());
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken,
+            SessionId = refreshToken.Id,
+            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
+        });
+    }
+
+    public async Task<ApiResponse<byte[]>> GetTwoFactorQrCodeAsync()
+    {
+        var setupResult = await GetTwoFactorSetupAsync();
+
+        if (!setupResult.Success || setupResult.Data == null)
+            return ApiResponse<byte[]>.Fail(setupResult.Message);
+
+        var qrBytes = _qrCodeService.GenerateQrCodePng(
+            setupResult.Data.AuthenticatorUri);
+
+        return ApiResponse<byte[]>.Ok(qrBytes);
     }
 
     private string? GetIpAddress()

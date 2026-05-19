@@ -84,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<IBackgroundJobService, HangfireBackgroundJobService>();
         services.AddScoped<ISecurityAuditService, SecurityAuditService>();
         services.AddScoped<ISecurityAuditQueryService, SecurityAuditQueryService>();
+        services.AddScoped<IQrCodeService, QrCodeService>();
 
         return services;
     }

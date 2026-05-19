@@ -21,4 +21,7 @@ public interface IAuthService
     Task<ApiResponse<string>> EnableTwoFactorAsync(VerifyTwoFactorRequest request);
     Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(LoginTwoFactorRequest request);
     Task<ApiResponse<string>> DisableTwoFactorAsync(DisableTwoFactorRequest request);
+    Task<ApiResponse<RecoveryCodesResponse>> GenerateRecoveryCodesAsync();
+    Task<ApiResponse<AuthResponse>> LoginWithRecoveryCodeAsync(LoginTwoFactorRequest request);
+    Task<ApiResponse<byte[]>> GetTwoFactorQrCodeAsync();
 }

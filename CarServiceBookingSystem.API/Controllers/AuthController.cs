@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
@@ -174,6 +175,7 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("TwoFactorPolicy")]
     [HttpPost("2fa/enable")]
     [ServiceFilter(typeof(ValidationFilter<VerifyTwoFactorRequest>))]
     public async Task<IActionResult> EnableTwoFactor(VerifyTwoFactorRequest request)
@@ -187,6 +189,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("2fa/login")]
+    [EnableRateLimiting("TwoFactorPolicy")]
     [ServiceFilter(typeof(ValidationFilter<LoginTwoFactorRequest>))]
     public async Task<IActionResult> LoginWithTwoFactor(LoginTwoFactorRequest request)
     {
@@ -200,6 +203,7 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("2fa/disable")]
+    [EnableRateLimiting("TwoFactorPolicy")]
     [ServiceFilter(typeof(ValidationFilter<DisableTwoFactorRequest>))]
     public async Task<IActionResult> DisableTwoFactor(DisableTwoFactorRequest request)
     {
@@ -209,5 +213,44 @@ public class AuthController : ControllerBase
             return BadRequest(result);
 
         return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("2fa/recovery-codes")]
+    public async Task<IActionResult> GenerateRecoveryCodes()
+    {
+        var result = await _authService.GenerateRecoveryCodesAsync();
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [HttpPost("2fa/recovery-login")]
+    [EnableRateLimiting("TwoFactorPolicy")]
+    [ServiceFilter(typeof(ValidationFilter<LoginTwoFactorRequest>))]
+    public async Task<IActionResult> LoginWithRecoveryCode(
+    LoginTwoFactorRequest request)
+    {
+        var result =
+            await _authService.LoginWithRecoveryCodeAsync(request);
+
+        if (!result.Success)
+            return Unauthorized(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("2fa/qr-code")]
+    public async Task<IActionResult> GetTwoFactorQrCode()
+    {
+        var result = await _authService.GetTwoFactorQrCodeAsync();
+
+        if (!result.Success || result.Data == null)
+            return BadRequest(result);
+
+        return File(result.Data, "image/png");
     }
 }
