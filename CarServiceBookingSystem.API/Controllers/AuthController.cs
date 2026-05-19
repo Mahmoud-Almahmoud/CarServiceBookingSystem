@@ -267,8 +267,7 @@ public class AuthController : ControllerBase
     [HttpDelete("trusted-devices/{deviceId:int}")]
     public async Task<IActionResult> RevokeTrustedDevice(int deviceId)
     {
-        var result =
-            await _authService.RevokeTrustedDeviceAsync(deviceId);
+        var result = await _authService.RevokeTrustedDeviceAsync(deviceId);
 
         if (!result.Success)
             return BadRequest(result);
@@ -280,8 +279,7 @@ public class AuthController : ControllerBase
     [HttpDelete("trusted-devices")]
     public async Task<IActionResult> RevokeAllTrustedDevices()
     {
-        var result =
-            await _authService.RevokeAllTrustedDevicesAsync();
+        var result = await _authService.RevokeAllTrustedDevicesAsync();
 
         return Ok(result);
     }
