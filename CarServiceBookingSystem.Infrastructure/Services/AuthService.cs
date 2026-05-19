@@ -219,6 +219,22 @@ public class AuthService : IAuthService
                 "Password change failed",
                 result.Errors.Select(x => x.Description).ToList());
         }
+
+        var currentSessionId = GetCurrentSessionId();
+
+        var activeTokens = await _context.RefreshTokens
+            //remove "&& (!currentSessionId.HasValue || x.Id != currentSessionId.Value))"  to revoke all sessions including current one
+            .Where(x =>x.UserId == user.Id && !x.IsRevoked && (!currentSessionId.HasValue || x.Id != currentSessionId.Value))
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedByIp = GetIpAddress();
+            token.RevocationReason = "Password changed";
+        }
+
         _backgroundJobService.EnqueueEmail(user.Email!,"Password Changed",
             "Your password was changed successfully. If this was not you, please contact support immediately.");
         await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
