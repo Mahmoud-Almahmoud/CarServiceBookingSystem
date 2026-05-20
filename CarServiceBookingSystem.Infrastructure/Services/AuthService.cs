@@ -74,6 +74,7 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
         var refreshTokenU = _tokenService.GenerateRefreshToken();
+        
 
         var refreshToken = new RefreshToken
         {
@@ -84,7 +85,8 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
             Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash()
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = Guid.NewGuid().ToString()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -332,7 +334,8 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
             Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash()
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = Guid.NewGuid().ToString()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -371,7 +374,7 @@ public class AuthService : IAuthService
 
         if (storedToken != null && storedToken.IsRevoked)
         {
-            await RevokeAllUserRefreshTokensAsync(storedToken.UserId);
+            await RevokeRefreshTokenFamilyAsync(storedToken.TokenFamilyId,"Refresh token reuse detected");
             await _securityAuditService.LogAsync(storedToken.UserId,"RefreshTokenReuseDetected",GetIpAddress(),GetDevice(), geo.Country, geo.City);
             return ApiResponse<AuthResponse>.Fail("Refresh token reuse detected. All sessions have been revoked.");
         }
@@ -413,13 +416,9 @@ public class AuthService : IAuthService
                 "Refresh token is no longer valid from this device.");
         }
 
-        storedToken.IsRevoked = true;
-        storedToken.RevokedAt = DateTime.UtcNow;
+        
         var refreshTokenU = _tokenService.GenerateRefreshToken();
-        storedToken.ReplacedByToken = refreshTokenU;
-        storedToken.RevokedAt = DateTime.UtcNow;
-        storedToken.RevokedByIp = GetIpAddress();
-        storedToken.RevocationReason = "Token rotated";
+        
 
         var roles = await _userManager.GetRolesAsync(user);
         var newRefreshToken = new RefreshToken
@@ -431,10 +430,21 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
             Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash()
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = storedToken.TokenFamilyId
         };
 
         await _context.RefreshTokens.AddAsync(newRefreshToken);
+        await _context.SaveChangesAsync();
+
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow;
+        storedToken.ReplacedByToken = refreshTokenU;
+        storedToken.RevokedAt = DateTime.UtcNow;
+        storedToken.RevokedByIp = GetIpAddress();
+        storedToken.RevocationReason = "Token rotated";
+        storedToken.ReplacedByTokenId = newRefreshToken.Id;
+
         await _context.SaveChangesAsync();
 
         var authUser = new AuthUser
@@ -526,20 +536,6 @@ public class AuthService : IAuthService
         return ApiResponse<string>.Ok("Logged out from all devices");
     }
 
-    private async Task RevokeAllUserRefreshTokensAsync(string userId)
-    {
-        var tokens = await _context.RefreshTokens
-            .Where(x => x.UserId == userId && !x.IsRevoked)
-            .ToListAsync();
-
-        foreach (var token in tokens)
-        {
-            token.IsRevoked = true;
-            token.RevokedAt = DateTime.UtcNow;
-        }
-
-        await _context.SaveChangesAsync();
-    }
 
     public async Task<ApiResponse<List<ActiveSessionResponse>>> GetActiveSessionsAsync()
     {
@@ -709,7 +705,8 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
             Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash()
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = Guid.NewGuid().ToString()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -852,7 +849,8 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
             Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash()
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = Guid.NewGuid().ToString()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -1123,5 +1121,22 @@ public class AuthService : IAuthService
             return null;
 
         return TokenHasher.Hash(fingerprint);
+    }
+
+    private async Task RevokeRefreshTokenFamilyAsync(string tokenFamilyId,string reason)
+    {
+        var tokens = await _context.RefreshTokens
+            .Where(x => x.TokenFamilyId == tokenFamilyId && !x.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in tokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedByIp = GetIpAddress();
+            token.RevocationReason = reason;
+        }
+
+        await _context.SaveChangesAsync();
     }
 }
