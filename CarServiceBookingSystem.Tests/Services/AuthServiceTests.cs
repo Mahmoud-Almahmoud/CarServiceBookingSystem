@@ -1019,6 +1019,111 @@ public class AuthServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task RefreshTokenAsync_Should_Fail_When_DeviceFingerprint_Does_Not_Match()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = "user-id",
+            Token = TokenHasher.Hash("valid-refresh-token"),
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow,
+            DeviceFingerprintHash = TokenHasher.Hash("original-device")
+        });
+
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        var httpContextAccessor = CreateHttpContextAccessor("user-id");
+        httpContextAccessor.HttpContext!.Request.Headers["X-Device-Fingerprint"] = "different-device";
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            FullName = "Test User"
+        };
+
+        userManagerMock
+            .Setup(x => x.FindByIdAsync("user-id"))
+            .ReturnsAsync(user);
+
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: httpContextAccessor);
+
+        var result = await authService.RefreshTokenAsync(new RefreshTokenRequest
+        {
+            RefreshToken = "valid-refresh-token"
+        });
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be("Refresh token is no longer valid from this device.");
+
+        var token = context.RefreshTokens.First();
+
+        token.IsRevoked.Should().BeTrue();
+        token.RevocationReason.Should().Be("Device fingerprint mismatch");
+    }
+
+    [Fact]
+    public async Task LoginAsync_Should_Require_TwoFactor_When_TrustedDeviceFingerprint_Does_Not_Match()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.TrustedDevices.Add(new TrustedDevice
+        {
+            UserId = "user-id",
+            TokenHash = TokenHasher.Hash("trusted-device-token"),
+            DeviceFingerprintHash = TokenHasher.Hash("original-device"),
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsRevoked = false
+        });
+
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            Id = "user-id",
+            Email = "test@test.com",
+            UserName = "test@test.com",
+            FullName = "Test User"
+        };
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        userManagerMock.Setup(x => x.FindByEmailAsync("test@test.com")).ReturnsAsync(user);
+        userManagerMock.Setup(x => x.IsEmailConfirmedAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManagerMock.Setup(x => x.CheckPasswordAsync(user, "Test123!")).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.GetTwoFactorEnabledAsync(user)).ReturnsAsync(true);
+        userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        var httpContextAccessor = CreateHttpContextAccessor("user-id");
+        httpContextAccessor.HttpContext!.Request.Headers["X-Device-Fingerprint"] = "different-device";
+
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock,
+            httpContextAccessor: httpContextAccessor);
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = "test@test.com",
+            Password = "Test123!",
+            TrustedDeviceToken = "trusted-device-token"
+        });
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().NotBeNull();
+        result.Data!.RequiresTwoFactor.Should().BeTrue();
+    }
+
     private static HttpContextAccessor CreateHttpContextAccessor(
         string userId,
         string? sessionId = null)
