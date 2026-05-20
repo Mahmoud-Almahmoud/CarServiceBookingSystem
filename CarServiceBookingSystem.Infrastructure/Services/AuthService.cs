@@ -1,6 +1,7 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Authentication;
@@ -24,6 +25,7 @@ public class AuthService : IAuthService
     private readonly ISecurityAuditService _securityAuditService;
     private readonly IQrCodeService _qrCodeService;
     private readonly IGeoLocationService _geoLocationService;
+    private readonly RoleManager<IdentityRole> _roleManager;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -32,7 +34,7 @@ public class AuthService : IAuthService
         IBackgroundJobService backgroundJobService,
         ISecurityAuditService securityAuditService,
         IQrCodeService qrCodeService,
-        IGeoLocationService geoLocationService)
+        IGeoLocationService geoLocationService, RoleManager<IdentityRole> roleManager)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -42,6 +44,7 @@ public class AuthService : IAuthService
         _backgroundJobService = backgroundJobService;
         _securityAuditService = securityAuditService;
         _geoLocationService = geoLocationService;
+        _roleManager = roleManager;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -91,6 +94,7 @@ public class AuthService : IAuthService
 
         await _context.RefreshTokens.AddAsync(refreshToken);
         await _context.SaveChangesAsync();
+        var permissions = await GetUserPermissionsAsync(user);
 
         var authUser = new AuthUser
         {
@@ -98,6 +102,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             Roles = roles,
+            Permissions = permissions,
             SessionId = refreshToken.Id
         };
 
@@ -340,6 +345,7 @@ public class AuthService : IAuthService
 
         await _context.RefreshTokens.AddAsync(refreshToken);
         await _context.SaveChangesAsync();
+        var permissions = await GetUserPermissionsAsync(user);
 
         var authUser = new AuthUser
         {
@@ -347,6 +353,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             Roles = roles,
+            Permissions = permissions,
             SessionId = refreshToken.Id
         };
 
@@ -446,6 +453,7 @@ public class AuthService : IAuthService
         storedToken.ReplacedByTokenId = newRefreshToken.Id;
 
         await _context.SaveChangesAsync();
+        var permissions = await GetUserPermissionsAsync(user);
 
         var authUser = new AuthUser
         {
@@ -453,6 +461,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             Roles = roles,
+            Permissions = permissions,
             SessionId = newRefreshToken.Id
         };
 
@@ -713,6 +722,7 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         var roles = await _userManager.GetRolesAsync(user);
+        var permissions = await GetUserPermissionsAsync(user);
 
         var authUser = new AuthUser
         {
@@ -720,6 +730,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             Roles = roles,
+            Permissions = permissions,
             SessionId = refreshToken.Id
         };
 
@@ -857,13 +868,14 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         var roles = await _userManager.GetRolesAsync(user);
-
+        var permissions = await GetUserPermissionsAsync(user);
         var authUser = new AuthUser
         {
             Id = user.Id,
             Email = user.Email!,
             FullName = user.FullName,
             Roles = roles,
+            Permissions = permissions,
             SessionId = refreshToken.Id
         };
 
@@ -1138,5 +1150,25 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task<IList<string>> GetUserPermissionsAsync(ApplicationUser user)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var permissions = new List<string>();
+
+        foreach (var role in roles)
+        {
+            var roleClaims = await _roleManager.GetClaimsAsync(
+                new IdentityRole(role));
+
+            permissions.AddRange(
+                roleClaims
+                    .Where(x => x.Type == CustomClaimTypes.Permission)
+                    .Select(x => x.Value));
+        }
+
+        return permissions.Distinct().ToList();
     }
 }
