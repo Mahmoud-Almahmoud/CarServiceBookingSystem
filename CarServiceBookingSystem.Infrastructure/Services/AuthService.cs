@@ -388,6 +388,31 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("User not found");
         }
 
+        var currentFingerprintHash = GetDeviceFingerprintHash();
+
+        if (!string.IsNullOrWhiteSpace(storedToken.DeviceFingerprintHash) &&
+            storedToken.DeviceFingerprintHash != currentFingerprintHash)
+        {
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
+            storedToken.RevokedByIp = GetIpAddress();
+            storedToken.RevocationReason = "Device fingerprint mismatch";
+
+            await _context.SaveChangesAsync();
+
+            await _securityAuditService.LogAsync(
+                storedToken.UserId,
+                "RefreshTokenFingerprintMismatch",
+                GetIpAddress(),
+                GetDevice(),
+                "Refresh token used from a different device fingerprint",
+                geo.Country,
+                geo.City);
+
+            return ApiResponse<AuthResponse>.Fail(
+                "Refresh token is no longer valid from this device.");
+        }
+
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
         var refreshTokenU = _tokenService.GenerateRefreshToken();
@@ -1031,10 +1056,12 @@ public class AuthService : IAuthService
     private async Task<bool> IsTrustedDeviceAsync(string userId,string rawToken)
     {
         var tokenHash = TokenHasher.Hash(rawToken);
+        var currentFingerprintHash = GetDeviceFingerprintHash();
 
         return await _context.TrustedDevices.AnyAsync(x =>
             x.UserId == userId &&
             x.TokenHash == tokenHash &&
+            x.DeviceFingerprintHash == currentFingerprintHash &&
             !x.IsRevoked &&
             x.ExpiresAt > DateTime.UtcNow);
     }
