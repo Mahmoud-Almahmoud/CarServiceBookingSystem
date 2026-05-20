@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarServiceBookingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520090402_AddDeviceFingerprintHash")]
+    partial class AddDeviceFingerprintHash
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -383,14 +386,8 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("ParentTokenId")
-                        .HasColumnType("int");
-
                     b.Property<string>("ReplacedByToken")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ReplacedByTokenId")
-                        .HasColumnType("int");
 
                     b.Property<string>("RevocationReason")
                         .HasColumnType("nvarchar(max)");
@@ -402,10 +399,6 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TokenFamilyId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

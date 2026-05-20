@@ -13,8 +13,6 @@ public class RefreshToken : BaseEntity
 
     public string? ReplacedByToken { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
     public string? CreatedByIp { get; set; }
 
     public string? RevokedByIp { get; set; }
@@ -22,4 +20,10 @@ public class RefreshToken : BaseEntity
     public string? RevocationReason { get; set; }
 
     public string? Device { get; set; }
+    public string? DeviceFingerprintHash { get; set; }
+    public int? ParentTokenId { get; set; }
+
+    public int? ReplacedByTokenId { get; set; }
+
+    public string TokenFamilyId { get; set; } = string.Empty;
 }
