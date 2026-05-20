@@ -1154,14 +1154,19 @@ public class AuthService : IAuthService
 
     private async Task<IList<string>> GetUserPermissionsAsync(ApplicationUser user)
     {
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = await _userManager.GetRolesAsync(user)
+            ?? new List<string>();
 
         var permissions = new List<string>();
 
-        foreach (var role in roles)
+        foreach (var roleName in roles)
         {
-            var roleClaims = await _roleManager.GetClaimsAsync(
-                new IdentityRole(role));
+            var role = await _roleManager.FindByNameAsync(roleName);
+
+            if (role == null)
+                continue;
+
+            var roleClaims = await _roleManager.GetClaimsAsync(role);
 
             permissions.AddRange(
                 roleClaims
