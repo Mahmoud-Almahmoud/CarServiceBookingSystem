@@ -206,7 +206,7 @@ CarServiceBookingSystem.Domain
 CarServiceBookingSystem.Application
 CarServiceBookingSystem.Infrastructure
 CarServiceBookingSystem.API
-CarServiceBookingSystem.Tests
+CarServiceBookingSystem.UnitTests
 CarServiceBookingSystem.IntegrationTests
 ```
 
@@ -691,7 +691,7 @@ Benefits:
 Run:
 
 ```bash
-dotnet test CarServiceBookingSystem.Tests
+dotnet test CarServiceBookingSystem.UnitTests
 ```
 
 ---
@@ -779,6 +779,22 @@ Serilog logs stored in:
 ```txt
 Logs/log-yyyyMMdd.txt
 ```
+
+---
+
+## GeoLite2 Database Setup
+
+Download the free GeoLite2 City database from MaxMind:
+
+https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/
+
+Place:
+
+GeoLite2-City.mmdb
+
+inside:
+
+CarServiceBookingSystem.API/
 
 ---
 

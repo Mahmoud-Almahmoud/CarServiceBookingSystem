@@ -56,7 +56,9 @@ public class SecurityAuditQueryService : ISecurityAuditQueryService
                 IpAddress = x.IpAddress,
                 Device = x.Device,
                 Details = x.Details,
-                CreatedAt = x.CreatedAt
+                CreatedAt = x.CreatedAt,
+                Country = x.Country,
+                City = x.City
             })
             .ToListAsync();
 
@@ -101,7 +103,9 @@ public class SecurityAuditQueryService : ISecurityAuditQueryService
                 IpAddress = x.IpAddress,
                 Device = x.Device,
                 Details = x.Details,
-                CreatedAt = x.CreatedAt
+                CreatedAt = x.CreatedAt,
+                Country = x.Country,
+                City = x.City
             })
             .ToListAsync();
 
@@ -114,4 +118,6 @@ public class SecurityAuditQueryService : ISecurityAuditQueryService
                 TotalCount = totalCount
             });
     }
+
+    
 }

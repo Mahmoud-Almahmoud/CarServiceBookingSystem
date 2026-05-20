@@ -23,6 +23,7 @@ public class AuthService : IAuthService
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly ISecurityAuditService _securityAuditService;
     private readonly IQrCodeService _qrCodeService;
+    private readonly IGeoLocationService _geoLocationService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -30,7 +31,8 @@ public class AuthService : IAuthService
         ApplicationDbContext context,IHttpContextAccessor httpContextAccessor,
         IBackgroundJobService backgroundJobService,
         ISecurityAuditService securityAuditService,
-        IQrCodeService qrCodeService)
+        IQrCodeService qrCodeService,
+        IGeoLocationService geoLocationService)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -39,6 +41,7 @@ public class AuthService : IAuthService
         _qrCodeService = qrCodeService;
         _backgroundJobService = backgroundJobService;
         _securityAuditService = securityAuditService;
+        _geoLocationService = geoLocationService;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -225,8 +228,8 @@ public class AuthService : IAuthService
         {
             device.IsRevoked = true;
         }
-        
-        await _securityAuditService.LogAsync(user.Id,"TrustedDevicesRevokedAfterPasswordChange",GetIpAddress(),GetDevice());
+        var geo = await GetGeoLocationAsync();
+        await _securityAuditService.LogAsync(user.Id,"TrustedDevicesRevokedAfterPasswordChange",GetIpAddress(),GetDevice(), geo.Country, geo.City);
 
         var currentSessionId = GetCurrentSessionId();
         var activeTokens = await _context.RefreshTokens
@@ -244,12 +247,13 @@ public class AuthService : IAuthService
 
         _backgroundJobService.EnqueueEmail(user.Email!, "Password Changed",
             "Your password was changed successfully. If this was not you, please contact support immediately.");
-        await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice());
+        await _securityAuditService.LogAsync(user.Id,"PasswordChanged",GetIpAddress(),GetDevice(), geo.Country, geo.City);
         return ApiResponse<string>.Ok("Password changed successfully");
     }
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
+        var geo = await GetGeoLocationAsync();
 
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -271,7 +275,7 @@ public class AuthService : IAuthService
         if (!validPassword)
         {
             await _userManager.AccessFailedAsync(user);
-            await _securityAuditService.LogAsync(user.Id,"LoginFailed",GetIpAddress(),GetDevice(),"Invalid password");
+            await _securityAuditService.LogAsync(user.Id,"LoginFailed", GetIpAddress(), GetDevice(),"Invalid password", geo.Country, geo.City);
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
@@ -285,7 +289,7 @@ public class AuthService : IAuthService
                 "SuspiciousLoginDetected",
                 GetIpAddress(),
                 GetDevice(),
-                "Login from a new IP address or device");
+                "Login from a new IP address or device", geo.Country, geo.City);
 
             _backgroundJobService.EnqueueEmail(user.Email!, "New Login Detected",
                 "A new login was detected on your account. If this was not you, please change your password immediately.");
@@ -342,7 +346,7 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        await _securityAuditService.LogAsync(user.Id, "LoginSuccess", GetIpAddress(), GetDevice());
+        await _securityAuditService.LogAsync(user.Id, "LoginSuccess", GetIpAddress(), GetDevice(), geo.Country, geo.City);
 
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
@@ -361,11 +365,12 @@ public class AuthService : IAuthService
     {
         var hashedToken = TokenHasher.Hash(request.RefreshToken);
         var storedToken = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Token == hashedToken);
+        var geo = await GetGeoLocationAsync();
 
         if (storedToken != null && storedToken.IsRevoked)
         {
             await RevokeAllUserRefreshTokensAsync(storedToken.UserId);
-            await _securityAuditService.LogAsync(storedToken.UserId,"RefreshTokenReuseDetected",GetIpAddress(),GetDevice());
+            await _securityAuditService.LogAsync(storedToken.UserId,"RefreshTokenReuseDetected",GetIpAddress(),GetDevice(), geo.Country, geo.City);
             return ApiResponse<AuthResponse>.Fail("Refresh token reuse detected. All sessions have been revoked.");
         }
 
@@ -430,6 +435,7 @@ public class AuthService : IAuthService
     public async Task<ApiResponse<string>> LogoutAsync(LogoutRequest request)
     {
         var currentSessionId = GetCurrentSessionId();
+        var geo = await GetGeoLocationAsync();
 
         RefreshToken? storedToken = null;
 
@@ -462,7 +468,7 @@ public class AuthService : IAuthService
         storedToken.RevocationReason = "Logout";
 
         await _context.SaveChangesAsync();
-        await _securityAuditService.LogAsync(storedToken.UserId, "Logout", GetIpAddress(), GetDevice());
+        await _securityAuditService.LogAsync(storedToken.UserId, "Logout", GetIpAddress(), GetDevice(), geo.Country, geo.City);
         return ApiResponse<string>.Ok("Logged out", "Logout successful");
     }
 
@@ -692,12 +698,12 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             user.Id,
             "TwoFactorLoginSuccess",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -741,12 +747,12 @@ public class AuthService : IAuthService
             return ApiResponse<string>.Fail("Invalid verification code");
 
         await _userManager.SetTwoFactorEnabledAsync(user, false);
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             user.Id,
             "TwoFactorDisabled",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<string>.Ok("Two-factor authentication disabled successfully");
     }
@@ -775,12 +781,12 @@ public class AuthService : IAuthService
 
         var codes = await _userManager
             .GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             user.Id,
             "RecoveryCodesGenerated",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<RecoveryCodesResponse>.Ok(
             new RecoveryCodesResponse
@@ -834,12 +840,12 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             user.Id,
             "RecoveryCodeLogin",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -923,12 +929,12 @@ public class AuthService : IAuthService
         device.IsRevoked = true;
 
         await _context.SaveChangesAsync();
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             userId,
             "TrustedDeviceRevoked",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<string>
             .Ok("Trusted device revoked successfully");
@@ -957,12 +963,12 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
-
+        var geo = await GetGeoLocationAsync();
         await _securityAuditService.LogAsync(
             userId,
             "AllTrustedDevicesRevoked",
             GetIpAddress(),
-            GetDevice());
+            GetDevice(), geo.Country, geo.City);
 
         return ApiResponse<string>
             .Ok("All trusted devices revoked successfully");
@@ -1067,5 +1073,10 @@ public class AuthService : IAuthService
                 x.Device == device);
 
         return !hasPreviousLoginFromSameDevice;
+    }
+
+    private async Task<GeoLocationResult> GetGeoLocationAsync()
+    {
+        return await _geoLocationService.GetLocationAsync(GetIpAddress());
     }
 }

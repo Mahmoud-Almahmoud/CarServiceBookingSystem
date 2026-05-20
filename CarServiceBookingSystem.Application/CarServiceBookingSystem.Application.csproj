@@ -16,8 +16,4 @@
     <ProjectReference Include="..\CarServiceBookingSystem.Domain\CarServiceBookingSystem.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features\" />
-  </ItemGroup>
-
 </Project>

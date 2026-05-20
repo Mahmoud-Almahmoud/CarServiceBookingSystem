@@ -34,4 +34,10 @@
     <ProjectReference Include="..\CarServiceBookingSystem.Infrastructure\CarServiceBookingSystem.Infrastructure.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<None Update="GeoLite2-City.mmdb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>
