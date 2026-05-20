@@ -15,5 +15,6 @@ public class TrustedDevice : BaseEntity
     public DateTime ExpiresAt { get; set; }
 
     public bool IsRevoked { get; set; }
+    public string? DeviceFingerprintHash { get; set; }
 
 }
