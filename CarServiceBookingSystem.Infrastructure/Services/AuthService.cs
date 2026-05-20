@@ -83,7 +83,8 @@ public class AuthService : IAuthService
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
-            Device = GetDevice()
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -330,7 +331,8 @@ public class AuthService : IAuthService
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
-            Device = GetDevice()
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -403,7 +405,8 @@ public class AuthService : IAuthService
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
-            Device = GetDevice()
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.RefreshTokens.AddAsync(newRefreshToken);
@@ -680,7 +683,8 @@ public class AuthService : IAuthService
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
-            Device = GetDevice()
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -822,7 +826,8 @@ public class AuthService : IAuthService
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
-            Device = GetDevice()
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.RefreshTokens.AddAsync(refreshToken);
@@ -1051,7 +1056,8 @@ public class AuthService : IAuthService
                 .Headers["User-Agent"]
                 .ToString(),
             ExpiresAt = DateTime.UtcNow.AddDays(30),
-            IsRevoked = false
+            IsRevoked = false,
+            DeviceFingerprintHash = GetDeviceFingerprintHash()
         };
 
         await _context.TrustedDevices.AddAsync(trustedDevice);
@@ -1078,5 +1084,17 @@ public class AuthService : IAuthService
     private async Task<GeoLocationResult> GetGeoLocationAsync()
     {
         return await _geoLocationService.GetLocationAsync(GetIpAddress());
+    }
+
+    private string? GetDeviceFingerprintHash()
+    {
+        var fingerprint = _httpContextAccessor.HttpContext?
+            .Request.Headers["X-Device-Fingerprint"]
+            .ToString();
+
+        if (string.IsNullOrWhiteSpace(fingerprint))
+            return null;
+
+        return TokenHasher.Hash(fingerprint);
     }
 }
