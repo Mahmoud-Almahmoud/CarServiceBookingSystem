@@ -1,4 +1,5 @@
-﻿using CarServiceBookingSystem.Domain.Entities;
+﻿using CarServiceBookingSystem.Application.Security;
+using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using FluentAssertions;
@@ -155,7 +156,7 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
                 "Bearer",
-                TestAuthHelper.GenerateJwt(adminUserId, adminEmail, "Admin"));
+                TestAuthHelper.GenerateJwt(adminUserId, adminEmail, "Admin", [Permissions.Bookings.ViewAll]));
 
         using var scope = _factory.Services.CreateScope();
 
