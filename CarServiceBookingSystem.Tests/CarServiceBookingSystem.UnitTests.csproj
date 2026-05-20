@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CarServiceBookingSystem.API\CarServiceBookingSystem.API.csproj" />
     <ProjectReference Include="..\CarServiceBookingSystem.Application\CarServiceBookingSystem.Application.csproj" />
     <ProjectReference Include="..\CarServiceBookingSystem.Domain\CarServiceBookingSystem.Domain.csproj" />
     <ProjectReference Include="..\CarServiceBookingSystem.Infrastructure\CarServiceBookingSystem.Infrastructure.csproj" />

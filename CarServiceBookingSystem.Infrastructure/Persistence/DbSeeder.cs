@@ -1,8 +1,10 @@
-﻿using CarServiceBookingSystem.Domain.Entities;
+﻿using CarServiceBookingSystem.Application.Security;
+using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CarServiceBookingSystem.Infrastructure.Persistence;
 
@@ -25,6 +27,32 @@ public static class DbSeeder
 
         if (!await roleManager.RoleExistsAsync(Roles.User))
             await roleManager.CreateAsync(new IdentityRole(Roles.User));
+
+        // Admin permissions
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.View);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Create);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Update);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Delete);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.ViewAll);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.UpdateStatus);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.SecurityAudit.ViewAll);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Users.Manage);
+
+        // User permissions
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Services.View);
+
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Bookings.ViewMine);
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Bookings.Create);
+
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Cars.ViewMine);
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Cars.Create);
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Cars.Update);
+
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.SecurityAudit.ViewMine);
+
     }
 
     private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager)
@@ -88,5 +116,25 @@ public static class DbSeeder
 
         await context.Services.AddRangeAsync(services);
         await context.SaveChangesAsync();
+    }
+
+    private static async Task AddPermissionClaimAsync(
+    RoleManager<IdentityRole> roleManager,
+    string roleName,
+    string permission)
+    {
+        var role = await roleManager.FindByNameAsync(roleName);
+
+        if (role == null)
+            return;
+
+        var claims = await roleManager.GetClaimsAsync(role);
+
+        if (claims.Any(x => x.Type == CustomClaimTypes.Permission && x.Value == permission))
+            return;
+
+        await roleManager.AddClaimAsync(
+            role,
+            new Claim(CustomClaimTypes.Permission, permission));
     }
 }

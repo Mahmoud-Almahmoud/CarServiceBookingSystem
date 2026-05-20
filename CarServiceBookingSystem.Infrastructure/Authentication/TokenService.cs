@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Security;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -33,6 +34,10 @@ public class TokenService : ITokenService
         foreach (var role in user.Roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+        foreach (var permission in user.Permissions)
+        {
+            claims.Add(new Claim(CustomClaimTypes.Permission, permission));
         }
 
         var key = new SymmetricSecurityKey(

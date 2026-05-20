@@ -1,4 +1,5 @@
-﻿using CarServiceBookingSystem.Domain.Entities;
+﻿using CarServiceBookingSystem.Application.Security;
+using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +29,8 @@ public class SecurityAuditLogsIntegrationTests
                 TestAuthHelper.GenerateJwt(
                     "admin-user-id",
                     "admin@test.com",
-                    "Admin"));
+                    "Admin",
+                    [Permissions.SecurityAudit.ViewAll]));
 
         using var scope = _factory.Services.CreateScope();
 
