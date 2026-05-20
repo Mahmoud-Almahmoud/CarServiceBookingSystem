@@ -1124,6 +1124,71 @@ public class AuthServiceTests
         result.Data!.RequiresTwoFactor.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task RefreshTokenAsync_Should_Revoke_Only_Compromised_Token_Family_When_Revoked_Token_Is_Reused()
+    {
+        await using var context = TestDbContextFactory.CreateDbContext();
+
+        context.RefreshTokens.AddRange(
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("reused-token"),
+                TokenFamilyId = "family-1",
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = true,
+                CreatedAt = DateTime.UtcNow,
+                RevokedAt = DateTime.UtcNow
+            },
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("active-token-same-family"),
+                TokenFamilyId = "family-1",
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            },
+            new RefreshToken
+            {
+                UserId = "user-id",
+                Token = TokenHasher.Hash("active-token-other-family"),
+                TokenFamilyId = "family-2",
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        await context.SaveChangesAsync();
+
+        var userManagerMock = UserManagerMockHelper.Create();
+
+        var authService = AuthServiceTestFactory.Create(
+            context,
+            userManagerMock);
+
+        var result = await authService.RefreshTokenAsync(new RefreshTokenRequest
+        {
+            RefreshToken = "reused-token"
+        });
+
+        result.Success.Should().BeFalse();
+
+        result.Message.Should().Be("Refresh token reuse detected. All sessions have been revoked.");
+
+        context.RefreshTokens
+            .Where(x => x.TokenFamilyId == "family-1")
+            .All(x => x.IsRevoked)
+            .Should()
+            .BeTrue();
+
+        context.RefreshTokens
+            .Where(x => x.TokenFamilyId == "family-2")
+            .All(x => !x.IsRevoked)
+            .Should()
+            .BeTrue();
+    }
+
     private static HttpContextAccessor CreateHttpContextAccessor(
         string userId,
         string? sessionId = null)
