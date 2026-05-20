@@ -206,7 +206,7 @@ CarServiceBookingSystem.Domain
 CarServiceBookingSystem.Application
 CarServiceBookingSystem.Infrastructure
 CarServiceBookingSystem.API
-CarServiceBookingSystem.Tests
+CarServiceBookingSystem.UnitTests
 CarServiceBookingSystem.IntegrationTests
 ```
 
@@ -691,7 +691,7 @@ Benefits:
 Run:
 
 ```bash
-dotnet test CarServiceBookingSystem.Tests
+dotnet test CarServiceBookingSystem.UnitTests
 ```
 
 ---
