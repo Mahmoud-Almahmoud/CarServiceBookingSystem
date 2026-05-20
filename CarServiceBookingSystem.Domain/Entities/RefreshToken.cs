@@ -21,4 +21,9 @@ public class RefreshToken : BaseEntity
 
     public string? Device { get; set; }
     public string? DeviceFingerprintHash { get; set; }
+    public int? ParentTokenId { get; set; }
+
+    public int? ReplacedByTokenId { get; set; }
+
+    public string TokenFamilyId { get; set; } = string.Empty;
 }
