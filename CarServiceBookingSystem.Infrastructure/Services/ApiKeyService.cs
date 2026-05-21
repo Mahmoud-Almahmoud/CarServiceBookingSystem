@@ -83,4 +83,25 @@ public class ApiKeyService : IApiKeyService
 
         return ApiResponse<string>.Ok("API key revoked successfully");
     }
+
+    public async Task<ApiResponse<List<ApiKeyResponse>>> GetAllAsync()
+    {
+        var keys = await _context.ApiKeys
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new ApiKeyResponse
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Owner = x.Owner,
+                IsActive = x.IsActive,
+                ExpiresAt = x.ExpiresAt,
+                LastUsedAt = x.LastUsedAt,
+                LastUsedIp = x.LastUsedIp,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync();
+
+        return ApiResponse<List<ApiKeyResponse>>.Ok(keys);
+    }
 }

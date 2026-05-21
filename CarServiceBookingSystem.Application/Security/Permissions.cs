@@ -39,6 +39,7 @@ public static class Permissions
 
     public static class ApiKeys
     {
+        public const string View = "ApiKeys.View";
         public const string Create = "ApiKeys.Create";
         public const string Revoke = "ApiKeys.Revoke";
     }

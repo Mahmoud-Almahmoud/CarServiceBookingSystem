@@ -46,4 +46,12 @@ public class ApiKeysController : ControllerBase
 
         return Ok(result);
     }
+
+    [Authorize(Policy = Permissions.ApiKeys.View)]
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _apiKeyService.GetAllAsync();
+        return Ok(result);
+    }
 }
