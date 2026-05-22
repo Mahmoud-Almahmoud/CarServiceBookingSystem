@@ -14,6 +14,8 @@ namespace CarServiceBookingSystem.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private static readonly System.Threading.SemaphoreSlim _roleSeedLock = new(1,1);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -54,20 +56,28 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddSingleton(emailServiceMock.Object);
         });
-        
+
     }
     public async Task SeedRolesAsync()
     {
-        using var scope = Services.CreateScope();
+        await _roleSeedLock.WaitAsync();
+        try
+        {
+            using var scope = Services.CreateScope();
 
-        var roleManager = scope.ServiceProvider
-            .GetRequiredService<RoleManager<IdentityRole>>();
+            var roleManager = scope.ServiceProvider
+                .GetRequiredService<RoleManager<IdentityRole>>();
 
-        if (!await roleManager.RoleExistsAsync("User"))
-            await roleManager.CreateAsync(new IdentityRole("User"));
+            if (!await roleManager.RoleExistsAsync("User"))
+                await roleManager.CreateAsync(new IdentityRole("User"));
 
-        if (!await roleManager.RoleExistsAsync("Admin"))
-            await roleManager.CreateAsync(new IdentityRole("Admin"));
+            if (!await roleManager.RoleExistsAsync("Admin"))
+                await roleManager.CreateAsync(new IdentityRole("Admin"));
+        }
+        finally
+        {
+            _roleSeedLock.Release();
+        }
     }
 
     public async Task SeedCarLookupsAsync()
