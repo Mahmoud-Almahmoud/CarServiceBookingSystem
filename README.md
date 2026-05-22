@@ -410,6 +410,16 @@ PUT  /api/v1/bookings/{id}/status
 
 ---
 
+## API Keys
+
+```txt
+POST   /api/v1/api-keys           (Requires ApiKeys.Create permission)
+GET    /api/v1/api-keys           (Requires ApiKeys.View permission)
+DELETE /api/v1/api-keys/{id}     (Requires ApiKeys.Revoke permission)
+```
+
+---
+
 ## Payments
 
 ```txt
@@ -726,6 +736,7 @@ into Postman.
 
 Includes:
 - authentication
+- api keys
 - bookings
 - services
 - cars
