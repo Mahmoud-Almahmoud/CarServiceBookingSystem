@@ -48,3 +48,5 @@ secrets.json
 TestResults/
 CoverageReport/
 coverage.cobertura.xml
+/CarServiceBookingSystem.API/Properties/PublishProfiles/mahmoudalmahmoud-002-site1 - FTP.pubxml
+/CarServiceBookingSystem.API/Properties/PublishProfiles/mahmoudalmahmoud-002-site1 - Web Deploy.pubxml
