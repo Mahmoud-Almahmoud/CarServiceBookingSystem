@@ -21,6 +21,12 @@ public static class AuthServiceTestFactory
         Mock<IQrCodeService>? qrCodeServiceMock = null,
         Mock<IGeoLocationService>? geoLocationServiceMock = null)
     {
+        var roleManagerMock = new Mock<RoleManager<IdentityRole>>(
+    new Mock<IRoleStore<IdentityRole>>().Object,
+    null!,
+    null!,
+    null!,
+    null!);
         tokenServiceMock ??= new Mock<ITokenService>();
         httpContextAccessor ??= new HttpContextAccessor
         {
@@ -50,6 +56,7 @@ public static class AuthServiceTestFactory
             backgroundJobServiceMock.Object,
             securityAuditServiceMock.Object,
             qrCodeServiceMock.Object,
-            geoLocationServiceMock.Object);
+            geoLocationServiceMock.Object,
+            roleManagerMock.Object);
     }
 }

@@ -86,6 +86,7 @@ public static class DependencyInjection
         services.AddScoped<ISecurityAuditQueryService, SecurityAuditQueryService>();
         services.AddScoped<IQrCodeService, QrCodeService>();
         services.AddScoped<IGeoLocationService, GeoLocationService>();
+        services.AddScoped<IApiKeyService, ApiKeyService>();
 
         return services;
     }

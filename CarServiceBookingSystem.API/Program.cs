@@ -115,11 +115,13 @@ if (!app.Environment.IsEnvironment("Testing"))
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseSerilogRequestLogging();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") )
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") )
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
