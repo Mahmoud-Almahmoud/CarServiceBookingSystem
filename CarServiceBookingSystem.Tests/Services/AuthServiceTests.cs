@@ -938,9 +938,9 @@ public class AuthServiceTests
                 "SuspiciousLoginDetected",
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
-                It.Is<string?>(details => details!.Contains("Login from a new IP address or device")),
                 "Germany",
-                "Berlin"),
+                "Berlin",
+                It.Is<string?>(details => details!.Contains("Login from a new IP address or device"))),
             Times.Once);
     }
 
