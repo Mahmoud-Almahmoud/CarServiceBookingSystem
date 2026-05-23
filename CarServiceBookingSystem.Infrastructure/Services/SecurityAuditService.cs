@@ -18,9 +18,9 @@ public class SecurityAuditService : ISecurityAuditService
     string eventType,
     string? ipAddress = null,
     string? device = null,
-    string? details = null,
     string? country = null,
-    string? city = null)
+    string? city = null,
+        string? details = null)
     {
         var log = new SecurityAuditLog
         {

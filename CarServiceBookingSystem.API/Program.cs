@@ -21,15 +21,21 @@ Log.Logger = new LoggerConfiguration()
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog();
-
-builder.Services.AddAPIDependencies(builder.Configuration, builder.Environment);
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext();
+});
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
         ForwardedHeaders.XForwardedFor |
         ForwardedHeaders.XForwardedProto;
 });
+builder.Services.AddAPIDependencies(builder.Configuration, builder.Environment);
+
 
 builder.Services.AddHealthChecks();
 builder.Services.AddResponseCompression();

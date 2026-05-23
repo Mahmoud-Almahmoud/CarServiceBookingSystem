@@ -16,7 +16,7 @@ Logs/
 
 # ASP.NET
 appsettings.Development.json
-appsettings.Producation.json
+appsettings.Production.json
 
 # Secrets
 secrets.json
