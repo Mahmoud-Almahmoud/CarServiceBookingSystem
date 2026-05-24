@@ -1,0 +1,107 @@
+name: Deploy API to SmarterASP.NET
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test-publish-deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Create production appsettings
+        shell: pwsh
+        run: |
+          $json = @"
+          {
+            "ConnectionStrings": {
+              "DefaultConnection": "${{ secrets.PROD_CONNECTION_STRING }}"
+            },
+            "Jwt": {
+              "Issuer": "https://mahmoud-almahmoud.com",
+              "Audience": "https://mahmoud-almahmoud.com",
+              "Secret": "${{ secrets.PROD_JWT_KEY }}",
+              "ExpiryMinutes": 60
+            },
+            "Stripe": {
+              "SecretKey": "${{ secrets.PROD_STRIPE_SECRET_KEY }}",
+              "WebhookSecret": "${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}",
+              "Currency": "aed"
+            },
+            "EmailSettings": {
+              "Host": "mail5018.site4now.net",
+              "Port": 587,
+              "EnableSsl": true,
+              "Password": "${{ secrets.PROD_EMAIL_PASSWORD }}",
+              "FromEmail": "${{ secrets.PROD_EMAIL_USERNAME }}",
+              "FromName": "Car Service Booking System"
+            },
+            "GeoLocation": {
+              "DatabasePath": "App_Data/GeoLite2-City.mmdb"
+            },
+            "Serilog": {
+              "Using": [ "Serilog.Sinks.File", "Serilog.Sinks.Console" ],
+              "MinimumLevel": {
+                "Default": "Information",
+                "Override": {
+                  "Microsoft": "Warning",
+                  "Microsoft.AspNetCore": "Warning",
+                  "Microsoft.EntityFrameworkCore.Database.Command": "Warning",
+                  "System": "Warning"
+                }
+              },
+              "WriteTo": [
+                {
+                  "Name": "File",
+                  "Args": {
+                    "path": "App_Data/Logs/log-.txt",
+                    "rollingInterval": "Day",
+                    "retainedFileCountLimit": 14,
+                    "rollOnFileSizeLimit": true,
+                    "fileSizeLimitBytes": 10485760
+                  }
+                },
+                {
+                  "Name": "Console"
+                }
+              ],
+              "Enrich": [ "FromLogContext" ],
+              "Properties": {
+                "Application": "CarServiceBookingSystem.API"
+              }
+            },
+            "AllowedHosts": "*"
+          }
+          "@
+
+          $json | Out-File -FilePath "CarServiceBookingSystem.API/appsettings.Production.json" -Encoding utf8
+
+      - name: Publish API
+        run: dotnet publish CarServiceBookingSystem.API/CarServiceBookingSystem.API.csproj --configuration Release --output ./publish --self-contained false
+
+      - name: Deploy to SmarterASP.NET with Web Deploy
+        uses: talunzhang/auto-web-deploy@v1.0.1
+        with:
+          website-name: ${{ secrets.SMARTER_WEBSITE_NAME }}
+          server-computer-name: ${{ secrets.SMARTER_SERVER_COMPUTER_NAME }}
+          server-username: ${{ secrets.SMARTER_SERVER_USERNAME }}
+          server-password: ${{ secrets.SMARTER_SERVER_PASSWORD }}
+          source-path: './publish'
