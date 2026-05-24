@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using CarServiceBookingSystem.API;
 using CarServiceBookingSystem.API.Filters;
+using CarServiceBookingSystem.API.Middleware;
 using CarServiceBookingSystem.API.Middlewares;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Infrastructure.Identity;
@@ -126,8 +127,13 @@ app.UseSerilogRequestLogging();
 //    app.UseSwagger();
 //    app.UseSwaggerUI();
 //}
+app.UseMiddleware<SwaggerBasicAuthMiddleware>();
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Car Service Booking System API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
