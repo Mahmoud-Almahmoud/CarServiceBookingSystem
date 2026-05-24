@@ -117,16 +117,21 @@ jobs:
             throw "Publish folder not found."
           }
       
-          $source = "-source:contentPath='publish'"
-          $dest = "-dest:contentPath='$env:SMARTER_SITE',computerName='$env:SMARTER_SERVICE_URL',userName='$env:SMARTER_USERNAME',password='$env:SMARTER_PASSWORD',authType='Basic',includeAcls='False'"
+          $publishPath = (Resolve-Path "publish").Path
       
-          $arguments = @(
-            "-verb:sync"
-            $source
-            $dest
-            "-allowUntrusted"
-            "-enableRule:DoNotDeleteRule"
-            "-verbose"
-          )
+          Write-Host "Publishing from: $publishPath"
+          Write-Host "Deploying to site: $env:SMARTER_SITE"
       
-          & $msdeploy @arguments
+          $source = "-source:contentPath=`"$publishPath`""
+          $dest = "-dest:contentPath=`"$env:SMARTER_SITE`",computerName=`"$env:SMARTER_SERVICE_URL`",userName=`"$env:SMARTER_USERNAME`",password=`"$env:SMARTER_PASSWORD`",authType=`"Basic`",includeAcls=`"False`""
+      
+          & $msdeploy `
+            -verb:sync `
+            $source `
+            $dest `
+            -allowUntrusted `
+            -disableLink:AppPoolExtension `
+            -disableLink:ContentExtension `
+            -disableLink:CertificateExtension `
+            -enableRule:DoNotDeleteRule `
+            -verbose
