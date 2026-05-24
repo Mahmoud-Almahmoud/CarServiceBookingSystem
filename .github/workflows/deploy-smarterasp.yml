@@ -94,20 +94,25 @@ jobs:
 
           $json | Out-File -FilePath "CarServiceBookingSystem.API/appsettings.Production.json" -Encoding utf8
 
+            - name: Show csproj files
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter "*.csproj" | Select-Object FullName
+
       - name: Publish API
         shell: pwsh
         run: |
-          dotnet publish .\CarServiceBookingSystem.API\CarServiceBookingSystem.API.csproj `
-            --configuration Release `
-            --output "${{ github.workspace }}\publish" `
-            --self-contained false
+          dotnet publish .\CarServiceBookingSystem.API\CarServiceBookingSystem.API.csproj --configuration Release --output publish --self-contained false
 
-      - name: Show publish folder
+      - name: Verify publish folder
         shell: pwsh
         run: |
-          Write-Host "Workspace: ${{ github.workspace }}"
-          Write-Host "Publish folder:"
-          Get-ChildItem "${{ github.workspace }}\publish" -Recurse | Select-Object FullName
+          if (!(Test-Path "publish")) {
+            throw "Publish folder was not created."
+          }
+
+          Write-Host "Publish folder exists."
+          Get-ChildItem "publish" | Select-Object Name, Length
 
       - name: Deploy to SmarterASP.NET with Web Deploy
         uses: talunzhang/auto-web-deploy@v1.0.1
@@ -116,4 +121,4 @@ jobs:
           server-computer-name: ${{ secrets.SMARTER_SERVER_COMPUTER_NAME }}
           server-username: ${{ secrets.SMARTER_SERVER_USERNAME }}
           server-password: ${{ secrets.SMARTER_SERVER_PASSWORD }}
-          source-path: '${{ github.workspace }}\publish'
+          source-path: 'publish'
