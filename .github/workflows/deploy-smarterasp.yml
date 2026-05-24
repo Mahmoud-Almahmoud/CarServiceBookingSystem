@@ -94,34 +94,39 @@ jobs:
 
           $json | Out-File -FilePath "CarServiceBookingSystem.API/appsettings.Production.json" -Encoding utf8
 
-      - name: Show csproj files
-        shell: pwsh
-        run: |
-          Get-ChildItem -Recurse -Filter "*.csproj" | Select-Object FullName
-
       - name: Publish API
         shell: pwsh
         run: |
           dotnet publish .\CarServiceBookingSystem.API\CarServiceBookingSystem.API.csproj --configuration Release --output publish --self-contained false
 
-      - name: Verify publish folder
-        shell: pwsh
-        run: |
-          if (!(Test-Path "publish")) {
-            throw "Publish folder was not created."
-          }
-
-          Write-Host "Publish folder exists."
-          Get-ChildItem "publish" | Select-Object Name, Length
-
       - name: Deploy with MSDeploy directly
         shell: pwsh
+        env:
+          SMARTER_SITE: ${{ secrets.SMARTER_WEBSITE_NAME }}
+          SMARTER_SERVICE_URL: ${{ secrets.SMARTER_SERVER_COMPUTER_NAME }}
+          SMARTER_USERNAME: ${{ secrets.SMARTER_SERVER_USERNAME }}
+          SMARTER_PASSWORD: ${{ secrets.SMARTER_SERVER_PASSWORD }}
         run: |
           $msdeploy = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
       
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="publish" `
-            -dest:contentPath="${{ secrets.SMARTER_WEBSITE_NAME }}",computerName="${{ secrets.SMARTER_SERVER_COMPUTER_NAME }}",userName="${{ secrets.SMARTER_SERVER_USERNAME }}",password="${{ secrets.SMARTER_SERVER_PASSWORD }}",authType="Basic" `
-            -allowUntrusted `
-            -enableRule:DoNotDeleteRule
+          if (!(Test-Path $msdeploy)) {
+            throw "msdeploy.exe not found at $msdeploy"
+          }
+      
+          if (!(Test-Path "publish")) {
+            throw "Publish folder not found."
+          }
+      
+          $source = "-source:contentPath='publish'"
+          $dest = "-dest:contentPath='$env:SMARTER_SITE',computerName='$env:SMARTER_SERVICE_URL',userName='$env:SMARTER_USERNAME',password='$env:SMARTER_PASSWORD',authType='Basic',includeAcls='False'"
+      
+          $arguments = @(
+            "-verb:sync"
+            $source
+            $dest
+            "-allowUntrusted"
+            "-enableRule:DoNotDeleteRule"
+            "-verbose"
+          )
+      
+          & $msdeploy @arguments
