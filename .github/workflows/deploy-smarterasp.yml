@@ -127,6 +127,7 @@ jobs:
             "-source:contentPath=$publishPath"
             "-dest:contentPath=$env:SMARTER_SITE,computerName=$env:SMARTER_SERVICE_URL,userName=$env:SMARTER_USERNAME,password=$env:SMARTER_PASSWORD,authType=Basic,includeAcls=False"
             "-allowUntrusted"
+            "-enableRule:AppOffline"
             "-enableRule:DoNotDeleteRule"
             "-verbose"
           )
