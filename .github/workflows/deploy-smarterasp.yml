@@ -94,7 +94,7 @@ jobs:
 
           $json | Out-File -FilePath "CarServiceBookingSystem.API/appsettings.Production.json" -Encoding utf8
 
-            - name: Show csproj files
+      - name: Show csproj files
         shell: pwsh
         run: |
           Get-ChildItem -Recurse -Filter "*.csproj" | Select-Object FullName
