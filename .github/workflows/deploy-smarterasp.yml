@@ -113,25 +113,26 @@ jobs:
             throw "msdeploy.exe not found at $msdeploy"
           }
       
-          if (!(Test-Path "publish")) {
+          if (!(Test-Path ".\publish")) {
             throw "Publish folder not found."
           }
       
-          $publishPath = (Resolve-Path "publish").Path
+          $publishPath = (Resolve-Path ".\publish").Path
       
           Write-Host "Publishing from: $publishPath"
           Write-Host "Deploying to site: $env:SMARTER_SITE"
       
-          $source = "-source:contentPath=`"$publishPath`""
-          $dest = "-dest:contentPath=`"$env:SMARTER_SITE`",computerName=`"$env:SMARTER_SERVICE_URL`",userName=`"$env:SMARTER_USERNAME`",password=`"$env:SMARTER_PASSWORD`",authType=`"Basic`",includeAcls=`"False`""
+          $arguments = @(
+            "-verb:sync"
+            "-source:contentPath=$publishPath"
+            "-dest:contentPath=$env:SMARTER_SITE,computerName=$env:SMARTER_SERVICE_URL,userName=$env:SMARTER_USERNAME,password=$env:SMARTER_PASSWORD,authType=Basic,includeAcls=False"
+            "-allowUntrusted"
+            "-enableRule:DoNotDeleteRule"
+            "-verbose"
+          )
       
-          & $msdeploy `
-            -verb:sync `
-            $source `
-            $dest `
-            -allowUntrusted `
-            -disableLink:AppPoolExtension `
-            -disableLink:ContentExtension `
-            -disableLink:CertificateExtension `
-            -enableRule:DoNotDeleteRule `
-            -verbose
+          & $msdeploy @arguments
+      
+          if ($LASTEXITCODE -ne 0) {
+            throw "MSDeploy failed with exit code $LASTEXITCODE"
+          }
