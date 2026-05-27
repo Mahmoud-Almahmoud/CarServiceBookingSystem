@@ -120,6 +120,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseSerilogRequestLogging();
 
 //if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") )
@@ -142,6 +143,7 @@ app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
@@ -155,6 +157,10 @@ if (!app.Environment.IsEnvironment("Testing"))
     RecurringJob.AddOrUpdate<IAuthService>(
     "cleanup-expired-trusted-devices",
     service => service.CleanupExpiredTrustedDevicesAsync(),
+    Cron.Daily);
+    RecurringJob.AddOrUpdate<IIdempotencyCleanupService>(
+    "cleanup-expired-idempotency-keys",
+    service => service.DeleteExpiredAsync(),
     Cron.Daily);
 }
 app.MapControllers();

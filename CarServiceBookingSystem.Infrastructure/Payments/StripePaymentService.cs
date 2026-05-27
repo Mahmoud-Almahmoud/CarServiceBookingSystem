@@ -15,15 +15,18 @@ public class StripePaymentService : IPaymentService
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly StripeSettings _settings;
+    private readonly IIdempotencyContext _idempotencyContext;
 
     public StripePaymentService(
         ApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IOptions<StripeSettings> options)
+        IOptions<StripeSettings> options,
+        IIdempotencyContext idempotencyContext)
     {
         _context = context;
         _currentUserService = currentUserService;
         _settings = options.Value;
+        _idempotencyContext = idempotencyContext;
     }
 
     public async Task<ApiResponse<PaymentIntentResponse>> CreatePaymentIntentAsync(int bookingId)
@@ -64,7 +67,13 @@ public class StripePaymentService : IPaymentService
         };
 
         var service = new PaymentIntentService();
-        var paymentIntent = await service.CreateAsync(options);
+        //var paymentIntent = await service.CreateAsync(options);
+        var requestOptions = new RequestOptions
+        {
+            IdempotencyKey = _idempotencyContext.Key
+        };
+
+        var paymentIntent = await service.CreateAsync(options,requestOptions);
 
         var payment = booking.Payment;
 

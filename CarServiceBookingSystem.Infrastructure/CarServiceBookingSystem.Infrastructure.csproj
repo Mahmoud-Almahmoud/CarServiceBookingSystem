@@ -26,10 +26,6 @@
     <ProjectReference Include="..\CarServiceBookingSystem.Domain\CarServiceBookingSystem.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Repositories\" />
-  </ItemGroup>
-
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>

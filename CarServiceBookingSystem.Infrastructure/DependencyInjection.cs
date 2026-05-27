@@ -1,4 +1,5 @@
-﻿using CarServiceBookingSystem.Application.Interfaces;
+﻿using CarServiceBookingSystem.Application.Common.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
@@ -87,6 +88,9 @@ public static class DependencyInjection
         services.AddScoped<IQrCodeService, QrCodeService>();
         services.AddScoped<IGeoLocationService, GeoLocationService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
+        services.AddScoped<IIdempotencyService, IdempotencyService>();
+        services.AddScoped<IIdempotencyContext, IdempotencyContext>();
+        services.AddScoped<IIdempotencyCleanupService, IdempotencyCleanupService>();
 
         return services;
     }

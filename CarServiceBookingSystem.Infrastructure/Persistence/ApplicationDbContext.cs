@@ -3,6 +3,7 @@ using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 
 namespace CarServiceBookingSystem.Infrastructure.Persistence;
 
@@ -30,6 +31,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SecurityAuditLog> SecurityAuditLogs => Set<SecurityAuditLog>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<IdempotencyKey> IdempotencyKeys { get; set; }
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -76,6 +78,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Payment>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RefreshToken>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<TrustedDevice>().HasQueryFilter(x => !x.IsDeleted);
+
+        builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         builder.Entity<ApiKey>()
             .HasIndex(x => x.KeyHash)

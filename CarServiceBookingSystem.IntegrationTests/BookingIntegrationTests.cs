@@ -1,8 +1,10 @@
-﻿using CarServiceBookingSystem.Application.Security;
+﻿using CarServiceBookingSystem.Application.DTOs.Bookings;
+using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Headers;
@@ -216,5 +218,188 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
         var response = await _client.GetAsync("/api/v1/bookings");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CreateBooking_SameIdempotencyKeyAndSameBody_ShouldCreateOnlyOneBooking()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const string email = "test@test.com";
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                TestAuthHelper.GenerateJwt(userId, email));
+
+        _client.DefaultRequestHeaders.Add("Idempotency-Key", "booking-test-001");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var service = new Service
+        {
+            Name = "Oil Change",
+            Price = 120,
+            DurationInMinutes = 30
+        };
+
+        var car = new Car
+        {
+            UserId = userId,
+            CarTrimId = 1,
+            PlateNumber = "12345 AD"
+        };
+
+        context.Services.Add(service);
+        context.Cars.Add(car);
+        await context.SaveChangesAsync();
+
+        var request = new
+        {
+            carId = car.Id,
+            serviceId = service.Id,
+            locationType = 1,
+            startDate = DateTime.UtcNow.AddDays(1)
+        };
+
+      
+
+        // Act
+        var response1 = await _client.PostAsJsonAsync("/api/v1/bookings", request);
+        var response2 = await _client.PostAsJsonAsync("/api/v1/bookings", request);
+
+        // Assert
+        response1.StatusCode.Should().Be(HttpStatusCode.OK);
+        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body1 = await response1.Content.ReadAsStringAsync();
+        var body2 = await response2.Content.ReadAsStringAsync();
+
+        body2.Should().Be(body1);
+
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var bookingCount = await db.Bookings.CountAsync();
+
+        bookingCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateBooking_SameIdempotencyKeyAndDifferentBody_ShouldReturnConflict()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const string email = "test@test.com";
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                TestAuthHelper.GenerateJwt(userId, email));
+
+        _client.DefaultRequestHeaders.Add("Idempotency-Key", "booking-conflict-test-001");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var service = new Service
+        {
+            Name = "Oil Change",
+            Price = 120,
+            DurationInMinutes = 30
+        };
+
+        var car = new Car
+        {
+            UserId = userId,
+            CarTrimId = 1,
+            PlateNumber = "12345 AD"
+        };
+
+        context.Services.Add(service);
+        context.Cars.Add(car);
+        await context.SaveChangesAsync();
+
+        var request1 = new
+        {
+            carId = car.Id,
+            serviceId = service.Id,
+            locationType = 1,
+            startDate = DateTime.UtcNow.AddDays(1)
+        };
+        var request2 = new
+        {
+            carId = car.Id,
+            serviceId = service.Id,
+            locationType = 1,
+            startDate = DateTime.UtcNow.AddDays(2)
+        };
+
+        // Act
+        var response1 = await _client.PostAsJsonAsync("/api/v1/bookings", request1);
+        var response2 = await _client.PostAsJsonAsync("/api/v1/bookings", request2);
+
+        // Assert
+        response1.StatusCode.Should().Be(HttpStatusCode.OK);
+        response2.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+    }
+
+    [Fact]
+    public async Task CreateBooking_MissingIdempotencyKey_ShouldReturnBadRequest()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const string email = "test@test.com";
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                TestAuthHelper.GenerateJwt(userId, email));
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var service = new Service
+        {
+            Name = "Oil Change",
+            Price = 120,
+            DurationInMinutes = 30
+        };
+
+        var car = new Car
+        {
+            UserId = userId,
+            CarTrimId = 1,
+            PlateNumber = "12345 AD"
+        };
+
+        context.Services.Add(service);
+        context.Cars.Add(car);
+        await context.SaveChangesAsync();
+
+        var request = new
+        {
+            carId = car.Id,
+            serviceId = service.Id,
+            locationType = 1,
+            startDate = DateTime.UtcNow.AddDays(1)
+        };
+        
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/v1/bookings", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+
+        body.Should().Contain("Idempotency-Key");
     }
 }

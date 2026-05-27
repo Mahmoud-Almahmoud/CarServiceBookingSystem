@@ -24,12 +24,12 @@ public sealed class SwaggerBasicAuthMiddleware
             return;
         }
 
-        // Allow Swagger freely in local development.
-        //if (environment.IsDevelopment())
-        //{
-        //    await _next(context);
-        //    return;
-        //}
+        //Allow Swagger freely in local development.
+        if (environment.IsDevelopment())
+        {
+            await _next(context);
+            return;
+        }
 
         var username = configuration["SwaggerAuth:Username"];
         var password = configuration["SwaggerAuth:Password"];
