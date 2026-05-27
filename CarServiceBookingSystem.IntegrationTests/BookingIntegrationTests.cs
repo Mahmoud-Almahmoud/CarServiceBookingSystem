@@ -34,7 +34,7 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
                 "Bearer",
                 TestAuthHelper.GenerateJwt(userId, email));
 
-        _client.DefaultRequestHeaders.Add("Idempotency-Key", "booking-test-001");
+        _client.DefaultRequestHeaders.Add("Idempotency-Key", "new-booking-test-001");
 
         using var scope = _factory.Services.CreateScope();
 
