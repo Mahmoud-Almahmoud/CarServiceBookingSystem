@@ -8,11 +8,10 @@ namespace CarServiceBookingSystem.Domain.Entities
     public class Payment : BaseEntity
     {
         public int BookingId { get; set; }
-        public Booking Booking { get; set; }
-
+        public Booking Booking { get; set; } 
         public decimal Amount { get; set; }
-
-        public string PaymentIntentId { get; set; } // Stripe reference
+        public string PaymentIntentId { get; set; }
         public PaymentStatus Status { get; set; }
+        public DateTime PaidAt { get; set; }
     }
 }

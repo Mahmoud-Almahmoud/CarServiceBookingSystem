@@ -1,7 +1,7 @@
 ﻿using Asp.Versioning;
+using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Payments;
-using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,14 +15,14 @@ namespace CarServiceBookingSystem.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class StripeWebhookController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IPaymentService _service;
     private readonly StripeSettings _stripeSettings;
 
     public StripeWebhookController(
-        ApplicationDbContext context,
+        IPaymentService service,
         IOptions<StripeSettings> stripeOptions)
     {
-        _context = context;
+        _service = service;
         _stripeSettings = stripeOptions.Value;
     }
 
@@ -46,51 +46,22 @@ public class StripeWebhookController : ControllerBase
             return BadRequest();
         }
 
-        if (stripeEvent.Type == "payment_intent.succeeded")
+        var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+
+        var stripeWebhookDto = new StripeWebhookDto
         {
-            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-
-            if (paymentIntent != null)
-            {
-                await MarkPaymentAsync(
-                    paymentIntent.Id,
-                    PaymentStatus.Succeeded);
-            }
-        }
-
-        if (stripeEvent.Type == "payment_intent.payment_failed")
+            EventId = stripeEvent.Id,
+            EventType = stripeEvent.Type,
+            PaymentIntentId = paymentIntent?.Id,
+            Amount = paymentIntent?.Amount ?? 0,
+            Currency = paymentIntent?.Currency
+        };
+        var result = await _service.HandleStripeWebhookAsync(stripeWebhookDto);
+        if (!result.Success && result.Data == WebhookProcessingStatus.Invalid)
         {
-            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-
-            if (paymentIntent != null)
-            {
-                await MarkPaymentAsync(
-                    paymentIntent.Id,
-                    PaymentStatus.Failed);
-            }
+            return BadRequest(result.Message);
         }
 
         return Ok();
-    }
-
-    private async Task MarkPaymentAsync(
-        string paymentIntentId,
-        PaymentStatus status)
-    {
-        var payment = await _context.Payments
-            .Include(x => x.Booking)
-            .FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntentId);
-
-        if (payment == null)
-            return;
-
-        payment.Status = status;
-
-        if (status == PaymentStatus.Succeeded)
-        {
-            payment.Booking.Status = BookingStatus.Confirmed;
-        }
-
-        await _context.SaveChangesAsync();
     }
 }

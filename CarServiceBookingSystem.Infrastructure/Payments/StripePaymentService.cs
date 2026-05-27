@@ -67,7 +67,6 @@ public class StripePaymentService : IPaymentService
         };
 
         var service = new PaymentIntentService();
-        //var paymentIntent = await service.CreateAsync(options);
         var requestOptions = new RequestOptions
         {
             IdempotencyKey = _idempotencyContext.Key
@@ -106,5 +105,103 @@ public class StripePaymentService : IPaymentService
             Amount = booking.Service.Price,
             Currency = _settings.Currency
         }, "Payment intent created successfully");
+    }
+
+    public async Task<ApiResponse<WebhookProcessingStatus>> HandleStripeWebhookAsync(StripeWebhookDto stripeWebhookDto)
+    {
+        var alreadyProcessed = await _context.StripeWebhookEvents
+                .AnyAsync(x => x.StripeEventId == stripeWebhookDto.EventId && x.Processed);
+
+        if (alreadyProcessed)
+            return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.AlreadyProcessed);
+
+        var webhookEvent = new StripeWebhookEvent
+        {
+            StripeEventId = stripeWebhookDto.EventId,
+            EventType = stripeWebhookDto.EventType,
+            Processed = false
+        };
+
+        _context.StripeWebhookEvents.Add(webhookEvent);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.AlreadyProcessed);
+        }
+
+        switch (stripeWebhookDto.EventType)
+        {
+            case "payment_intent.succeeded":
+                var paymentIntent = stripeWebhookDto.PaymentIntentId != null ? new PaymentIntent { Id = stripeWebhookDto.PaymentIntentId } : null;
+
+                if (paymentIntent is null)
+                    return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.Invalid);
+
+                await HandlePaymentIntentSucceededAsync(paymentIntent.Id);
+                break;
+
+            case "payment_intent.payment_failed":
+                var failedPaymentIntent = stripeWebhookDto.PaymentIntentId != null ? new PaymentIntent { Id = stripeWebhookDto.PaymentIntentId } : null;
+
+                if (failedPaymentIntent is null)
+                    return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.Invalid);
+
+                await HandlePaymentIntentFailedAsync(failedPaymentIntent.Id);
+                break;
+
+            default:
+                webhookEvent.Processed = true;
+                webhookEvent.ProcessedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.Ignored);
+        }
+
+        webhookEvent.Processed = true;
+        webhookEvent.ProcessedAtUtc = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return ApiResponse<WebhookProcessingStatus>.Ok(WebhookProcessingStatus.Processed);
+    }
+
+    private async Task HandlePaymentIntentSucceededAsync(string paymentIntentId)
+    {
+        var payment = await _context.Payments
+            .Include(x => x.Booking)
+            .FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntentId);
+
+        if (payment is null)
+            return;
+
+        if (payment.Status == PaymentStatus.Succeeded)
+            return;
+
+        payment.Status = PaymentStatus.Succeeded;
+        payment.PaidAt = DateTime.UtcNow;
+
+        payment.Booking.Status = BookingStatus.Confirmed;
+    }
+
+    private async Task HandlePaymentIntentFailedAsync(string paymentIntentId)
+    {
+        var payment = await _context.Payments
+            .Include(x => x.Booking)
+            .FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntentId);
+
+        if (payment is null)
+            return;
+
+        if (payment.Status == PaymentStatus.Failed)
+            return;
+
+        payment.Status = PaymentStatus.Failed;
+
+        payment.Booking.Status = BookingStatus.Pending;
     }
 }
