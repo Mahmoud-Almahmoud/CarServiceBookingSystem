@@ -32,6 +32,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<IdempotencyKey> IdempotencyKeys { get; set; }
+    public DbSet<StripeWebhookEvent> StripeWebhookEvents { get; set; }
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -80,6 +81,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TrustedDevice>().HasQueryFilter(x => !x.IsDeleted);
 
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        builder.Entity<StripeWebhookEvent>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.StripeEventId)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(x => x.EventType)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.HasIndex(x => x.StripeEventId)
+                .IsUnique();
+        });
 
         builder.Entity<ApiKey>()
             .HasIndex(x => x.KeyHash)
