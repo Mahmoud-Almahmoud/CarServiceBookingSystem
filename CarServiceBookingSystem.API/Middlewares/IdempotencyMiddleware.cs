@@ -60,7 +60,13 @@ public class IdempotencyMiddleware
         context.Request.EnableBuffering();
 
         var requestBody = await ReadRequestBodyAsync(context.Request);
-        var requestHash = ComputeSha256Hash(requestBody);
+        var hashInput =
+            $"{context.Request.Method}|" +
+            $"{context.Request.Path.Value?.ToLowerInvariant()}|" +
+            $"{context.Request.QueryString.Value?.ToLowerInvariant()}|" +
+            $"{requestBody}";
+
+        var requestHash = ComputeSha256Hash(hashInput);
 
         var endpoint = $"{context.Request.Method}:{context.Request.Path.Value?.ToLowerInvariant()}";
 
