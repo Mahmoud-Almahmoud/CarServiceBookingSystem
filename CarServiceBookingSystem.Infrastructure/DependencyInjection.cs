@@ -96,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<ISecurityAuditLogCleanupService, SecurityAuditLogCleanupService>();
         services.AddScoped<IStripeWebhookCleanupService, StripeWebhookCleanupService>();
         services.AddScoped<ITrustedDeviceCleanupService, TrustedDeviceCleanupService>();
+        services.AddScoped<ISystemStatusService, SystemStatusService>();
 
         return services;
     }

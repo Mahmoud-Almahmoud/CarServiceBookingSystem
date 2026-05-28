@@ -48,4 +48,9 @@ public static class Permissions
     {
         public const string Manage = "maintenance.manage";
     }
+
+    public static class System
+    {
+        public const string View = "system.view";
+    }
 }
