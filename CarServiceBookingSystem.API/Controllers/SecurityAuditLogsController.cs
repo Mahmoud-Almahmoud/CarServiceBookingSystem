@@ -30,8 +30,8 @@ public class SecurityAuditLogsController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize]
     [HttpGet("my-activity")]
+    [Authorize(Policy = Permissions.SecurityAudit.ViewMine)]
     public async Task<IActionResult> GetMyActivity([FromQuery] PagedRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

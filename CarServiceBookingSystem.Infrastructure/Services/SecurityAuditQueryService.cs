@@ -16,9 +16,31 @@ public class SecurityAuditQueryService : ISecurityAuditQueryService
     }
 
     public async Task<ApiResponse<PagedResponse<SecurityAuditLogResponse>>> GetLogsAsync(
-        PagedRequest request)
+        SecurityAuditLogRequest request)
     {
-        var query = _context.SecurityAuditLogs.AsNoTracking();
+        request.PageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
+        request.PageSize = request.PageSize <= 0 ? 20 : request.PageSize;
+        request.PageSize = request.PageSize > 100 ? 100 : request.PageSize;
+
+        var query = _context.SecurityAuditLogs.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.UserId))
+            query = query.Where(x => x.UserId == request.UserId);
+
+        if (!string.IsNullOrWhiteSpace(request.EventType))
+            query = query.Where(x => x.EventType == request.EventType);
+
+        if (!string.IsNullOrWhiteSpace(request.IpAddress))
+            query = query.Where(x => x.IpAddress == request.IpAddress);
+
+        if (!string.IsNullOrWhiteSpace(request.Country))
+            query = query.Where(x => x.Country == request.Country);
+
+        if (request.FromUtc.HasValue)
+            query = query.Where(x => x.CreatedAt >= request.FromUtc.Value);
+
+        if (request.ToUtc.HasValue)
+            query = query.Where(x => x.CreatedAt <= request.ToUtc.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
