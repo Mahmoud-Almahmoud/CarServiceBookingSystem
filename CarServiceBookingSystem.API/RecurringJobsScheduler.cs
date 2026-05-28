@@ -1,0 +1,33 @@
+﻿using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
+using Hangfire;
+
+namespace CarServiceBookingSystem.API
+{
+    public static class RecurringJobsScheduler
+    {
+        public static void RegisterRecurringJobs()
+        {
+            RecurringJob.AddOrUpdate<IAuthService>(
+            "cleanup-expired-trusted-devices",
+            service => service.CleanupExpiredTrustedDevicesAsync(),
+            Cron.Daily);
+            RecurringJob.AddOrUpdate<IIdempotencyCleanupService>(
+            "cleanup-expired-idempotency-keys",
+            service => service.DeleteExpiredAsync(),
+            Cron.Daily);
+            RecurringJob.AddOrUpdate<IRefreshTokenCleanupService>(
+            "cleanup-refresh-tokens",
+            service => service.CleanupExpiredAndOldRevokedTokensAsync(),
+            Cron.Daily);
+            RecurringJob.AddOrUpdate<ISecurityAuditLogCleanupService>(
+            "cleanup-security-audit-logs",
+            service => service.CleanupOldLogsAsync(),
+            Cron.Weekly);
+            RecurringJob.AddOrUpdate<IStripeWebhookCleanupService>(
+            "cleanup-stripe-webhook-events",
+            service => service.CleanupOldWebhookEventsAsync(),
+            Cron.Weekly);
+        }
+    }
+}

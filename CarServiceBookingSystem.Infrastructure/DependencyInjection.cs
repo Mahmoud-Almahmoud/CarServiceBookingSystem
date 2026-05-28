@@ -93,6 +93,8 @@ public static class DependencyInjection
         services.AddScoped<IIdempotencyContext, IdempotencyContext>();
         services.AddScoped<IIdempotencyCleanupService, IdempotencyCleanupService>();
         services.AddScoped<IRefreshTokenCleanupService, RefreshTokenCleanupService>();
+        services.AddScoped<ISecurityAuditLogCleanupService, SecurityAuditLogCleanupService>();
+        services.AddScoped<IStripeWebhookCleanupService, StripeWebhookCleanupService>();
 
         return services;
     }

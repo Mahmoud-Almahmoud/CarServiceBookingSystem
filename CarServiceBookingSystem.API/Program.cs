@@ -162,18 +162,7 @@ if (!app.Environment.IsEnvironment("Testing"))
             new HangfireAdminAuthorizationFilter()
         ]
     });
-    RecurringJob.AddOrUpdate<IAuthService>(
-    "cleanup-expired-trusted-devices",
-    service => service.CleanupExpiredTrustedDevicesAsync(),
-    Cron.Daily);
-    RecurringJob.AddOrUpdate<IIdempotencyCleanupService>(
-    "cleanup-expired-idempotency-keys",
-    service => service.DeleteExpiredAsync(),
-    Cron.Daily);
-    RecurringJob.AddOrUpdate<IRefreshTokenCleanupService>(
-    "cleanup-refresh-tokens",
-    service => service.CleanupExpiredAndOldRevokedTokensAsync(),
-    Cron.Daily);
+    RecurringJobsScheduler.RegisterRecurringJobs();
 }
 app.MapControllers();
 app.MapHealthChecks("/health");
