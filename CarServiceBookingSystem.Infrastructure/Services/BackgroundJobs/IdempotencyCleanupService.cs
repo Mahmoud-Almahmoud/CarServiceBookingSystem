@@ -10,7 +10,7 @@ public class IdempotencyCleanupService : IIdempotencyCleanupService
         _dbContext = dbContext;
     }
 
-    public async Task DeleteExpiredAsync()
+    public async Task CleanupExpiredKeysAsync()
     {
         var now = DateTime.UtcNow;
 

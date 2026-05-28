@@ -8,13 +8,13 @@ namespace CarServiceBookingSystem.API
     {
         public static void RegisterRecurringJobs()
         {
-            RecurringJob.AddOrUpdate<IAuthService>(
+            RecurringJob.AddOrUpdate<ITrustedDeviceCleanupService>(
             "cleanup-expired-trusted-devices",
             service => service.CleanupExpiredTrustedDevicesAsync(),
             Cron.Daily);
             RecurringJob.AddOrUpdate<IIdempotencyCleanupService>(
             "cleanup-expired-idempotency-keys",
-            service => service.DeleteExpiredAsync(),
+            service => service.CleanupExpiredKeysAsync(),
             Cron.Daily);
             RecurringJob.AddOrUpdate<IRefreshTokenCleanupService>(
             "cleanup-refresh-tokens",

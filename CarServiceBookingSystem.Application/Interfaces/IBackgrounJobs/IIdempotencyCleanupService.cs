@@ -1,4 +1,4 @@
 ﻿public interface IIdempotencyCleanupService
 {
-    Task DeleteExpiredAsync();
+    Task CleanupExpiredKeysAsync();
 }

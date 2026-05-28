@@ -43,4 +43,9 @@ public static class Permissions
         public const string Create = "ApiKeys.Create";
         public const string Revoke = "ApiKeys.Revoke";
     }
+
+    public static class Maintenance
+    {
+        public const string Manage = "maintenance.manage";
+    }
 }
