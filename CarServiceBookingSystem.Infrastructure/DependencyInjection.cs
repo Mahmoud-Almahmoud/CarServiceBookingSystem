@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Common.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
@@ -91,6 +92,7 @@ public static class DependencyInjection
         services.AddScoped<IIdempotencyService, IdempotencyService>();
         services.AddScoped<IIdempotencyContext, IdempotencyContext>();
         services.AddScoped<IIdempotencyCleanupService, IdempotencyCleanupService>();
+        services.AddScoped<IRefreshTokenCleanupService, RefreshTokenCleanupService>();
 
         return services;
     }

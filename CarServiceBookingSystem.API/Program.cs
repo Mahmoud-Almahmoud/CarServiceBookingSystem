@@ -4,6 +4,7 @@ using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.API.Middleware;
 using CarServiceBookingSystem.API.Middlewares;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Hangfire;
@@ -93,6 +94,13 @@ app.Use(async (context, next) =>
     context.Response.Headers.TryAdd("X-Frame-Options", "DENY");
     context.Response.Headers.TryAdd("Referrer-Policy", "no-referrer");
     context.Response.Headers.TryAdd("X-XSS-Protection", "0");
+    context.Response.Headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers.TryAdd(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains");
+    }
 
     await next();
 });
@@ -161,6 +169,10 @@ if (!app.Environment.IsEnvironment("Testing"))
     RecurringJob.AddOrUpdate<IIdempotencyCleanupService>(
     "cleanup-expired-idempotency-keys",
     service => service.DeleteExpiredAsync(),
+    Cron.Daily);
+    RecurringJob.AddOrUpdate<IRefreshTokenCleanupService>(
+    "cleanup-refresh-tokens",
+    service => service.CleanupExpiredAndOldRevokedTokensAsync(),
     Cron.Daily);
 }
 app.MapControllers();
