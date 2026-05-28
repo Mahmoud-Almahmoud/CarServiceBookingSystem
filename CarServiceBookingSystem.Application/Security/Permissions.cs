@@ -35,6 +35,8 @@ public static class Permissions
     public static class Users
     {
         public const string Manage = "Users.Manage";
+        public const string ManageMine = "Users.ManageMine";
+        public const string View = "Users.View";
     }
 
     public static class ApiKeys
@@ -52,5 +54,19 @@ public static class Permissions
     public static class System
     {
         public const string View = "system.view";
+    }
+
+    public static class Roles
+    {
+        public const string View = "Roles.View";
+        public const string Create = "Roles.Create";
+        public const string Update = "Roles.Update";
+        public const string Delete = "Roles.Delete";
+        public const string ManagePermissions = "Roles.ManagePermissions";
+    }
+
+    public static class PermissionsCatalog
+    {
+        public const string View = "Permissions.View";
     }
 }

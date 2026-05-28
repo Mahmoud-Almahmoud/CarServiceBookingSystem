@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Enums;
@@ -24,7 +25,7 @@ public class SecurityAuditLogsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = Permissions.SecurityAudit.ViewAll)]
-    public async Task<IActionResult> GetLogs([FromQuery] PagedRequest request)
+    public async Task<IActionResult> GetLogs([FromQuery] SecurityAuditLogRequest request)
     {
         var result = await _queryService.GetLogsAsync(request);
         return Ok(result);

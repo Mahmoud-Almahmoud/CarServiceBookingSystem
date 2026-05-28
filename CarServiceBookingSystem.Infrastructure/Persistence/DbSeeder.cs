@@ -40,6 +40,7 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.SecurityAudit.ViewAll);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Users.Manage);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Users.View);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.ApiKeys.Create);
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.ApiKeys.Revoke);
@@ -48,6 +49,14 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Maintenance.Manage);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.System.View);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Roles.View);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Roles.Create);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Roles.Update);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Roles.Delete);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Roles.ManagePermissions);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.PermissionsCatalog.View);
 
         // User permissions
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Services.View);
@@ -60,10 +69,6 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Cars.Update);
 
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.SecurityAudit.ViewMine);
-
-
-        
-
     }
 
     private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager)

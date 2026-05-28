@@ -1,4 +1,5 @@
 ﻿using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Services;
 using CarServiceBookingSystem.UnitTests.TestHelpers;
@@ -59,7 +60,7 @@ public class SecurityAuditServiceTests
 
         var service = new SecurityAuditQueryService(context);
 
-        var result = await service.GetLogsAsync(new PagedRequest
+        var result = await service.GetLogsAsync(new SecurityAuditLogRequest
         {
             PageNumber = 1,
             PageSize = 10
@@ -106,7 +107,7 @@ public class SecurityAuditServiceTests
 
         var service = new SecurityAuditQueryService(context);
 
-        var result = await service.GetLogsAsync(new PagedRequest
+        var result = await service.GetLogsAsync(new SecurityAuditLogRequest
         {
             PageNumber = 1,
             PageSize = 10,
