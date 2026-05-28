@@ -25,4 +25,11 @@ public class SystemController : ControllerBase
         var status = await _systemStatusService.GetStatusAsync();
         return Ok(status);
     }
+
+    [HttpGet("configuration")]
+    public IActionResult GetConfiguration()
+    {
+        var configuration = _systemStatusService.GetConfiguration();
+        return Ok(configuration);
+    }
 }

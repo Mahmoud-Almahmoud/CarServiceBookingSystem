@@ -65,4 +65,38 @@ public class SystemStatusService : ISystemStatusService
             AppVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString()
         };
     }
+
+    public SystemConfigurationResponse GetConfiguration()
+    {
+        return new SystemConfigurationResponse
+        {
+            Environment = _environment.EnvironmentName,
+
+            JwtConfigured =
+                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Secret"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Issuer"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Audience"]),
+
+            RefreshTokensEnabled = true,
+            TwoFactorEnabled = true,
+            ApiKeysEnabled = true,
+
+            StripeConfigured =
+                !string.IsNullOrWhiteSpace(_configuration["StripeSettings:SecretKey"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["StripeSettings:WebhookSecret"]),
+
+            EmailConfigured =
+                !string.IsNullOrWhiteSpace(_configuration["EmailSettings:Host"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["EmailSettings:FromEmail"]),
+
+            SwaggerProtected =
+                _environment.IsDevelopment() ||
+                _configuration.GetValue<bool>("Swagger:RequireAuthentication"),
+
+            HangfireProtected = true,
+
+            RateLimitingEnabled = true,
+            SecurityHeadersEnabled = true
+        };
+    }
 }

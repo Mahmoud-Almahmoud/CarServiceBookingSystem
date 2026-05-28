@@ -8,5 +8,6 @@ namespace CarServiceBookingSystem.Application.Interfaces
     public interface ISystemStatusService
     {
         Task<SystemStatusResponse> GetStatusAsync();
+        SystemConfigurationResponse GetConfiguration();
     }
 }
