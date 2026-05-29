@@ -70,4 +70,9 @@ public static class Permissions
     {
         public const string View = "Permissions.View";
     }
+
+    public static class BackgroundJobs
+    {
+        public const string View = "BackgroundJobs.View";
+    }
 }

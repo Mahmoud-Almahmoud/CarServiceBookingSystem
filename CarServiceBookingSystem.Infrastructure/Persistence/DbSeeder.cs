@@ -60,6 +60,8 @@ public static class DbSeeder
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.PermissionsCatalog.View);
 
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.BackgroundJobs.View);
+
         // User permissions
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Services.View);
 
