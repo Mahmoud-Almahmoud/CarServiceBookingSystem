@@ -9,4 +9,8 @@ public interface IApiKeyService
     Task<bool> ValidateAsync(string rawKey, string? ipAddress);
     Task<ApiResponse<string>> RevokeAsync(int id);
     Task<ApiResponse<List<ApiKeyResponse>>> GetAllAsync();
+    Task<ApiResponse<List<ApiKeyUsageDto>>> GetUsageAsync(ApiKeyUsageQuery query);
+    Task<ApiResponse<ApiKeyUsageDto>> GetUsageByIdAsync(int apiKeyId);
+    Task<ApiResponse<ApiKeyUsageSummaryDto>> GetUsageSummaryAsync();
+    Task<ApiResponse<List<StaleApiKeyDto>>> GetStaleKeysAsync(int days = 30);
 }

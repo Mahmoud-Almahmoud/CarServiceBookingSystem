@@ -104,4 +104,122 @@ public class ApiKeyService : IApiKeyService
 
         return ApiResponse<List<ApiKeyResponse>>.Ok(keys);
     }
+
+    public async Task<ApiResponse<List<ApiKeyUsageDto>>> GetUsageAsync(ApiKeyUsageQuery request)
+    {
+        var now = DateTime.UtcNow;
+
+        var query = _context.ApiKeys
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (request.ActiveOnly == true)
+        {
+            query = query.Where(x => x.IsActive);
+        }
+
+        if (request.UnusedOnly == true)
+        {
+            query = query.Where(x => x.LastUsedAt == null);
+        }
+
+        if (request.ExpiredOnly == true)
+        {
+            query = query.Where(x => x.ExpiresAt != null && x.ExpiresAt <= now);
+        }
+
+        var data = await query
+            .OrderByDescending(x => x.LastUsedAt ?? x.CreatedAt)
+            .Select(x => new ApiKeyUsageDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                CreatedAt = x.CreatedAt,
+                LastUsedAt = x.LastUsedAt,
+                LastUsedIpAddress = x.LastUsedIp,
+                IsActive = x.IsActive,
+                ExpiresAt = x.ExpiresAt,
+                IsExpired = x.ExpiresAt != null && x.ExpiresAt <= now
+            })
+            .ToListAsync();
+
+        return ApiResponse<List<ApiKeyUsageDto>>.Ok(data);
+    }
+    public async Task<ApiResponse<ApiKeyUsageDto>> GetUsageByIdAsync(int apiKeyId)
+    {
+        var now = DateTime.UtcNow;
+
+        var apiKey = await _context.ApiKeys
+            .AsNoTracking()
+            .Where(x => x.Id == apiKeyId)
+            .Select(x => new ApiKeyUsageDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                CreatedAt = x.CreatedAt,
+                LastUsedAt = x.LastUsedAt,
+                LastUsedIpAddress = x.LastUsedIp,
+                IsActive = x.IsActive,
+                ExpiresAt = x.ExpiresAt,
+                IsExpired = x.ExpiresAt != null && x.ExpiresAt <= now
+            })
+            .FirstOrDefaultAsync();
+
+        if (apiKey is null)
+            return ApiResponse<ApiKeyUsageDto>.Fail("API key not found.");
+
+        return ApiResponse<ApiKeyUsageDto>.Ok(apiKey);
+    }
+
+    public async Task<ApiResponse<ApiKeyUsageSummaryDto>> GetUsageSummaryAsync()
+    {
+        var now = DateTime.UtcNow;
+
+        var summary = new ApiKeyUsageSummaryDto
+        {
+            TotalKeys = await _context.ApiKeys.CountAsync(),
+            ActiveKeys = await _context.ApiKeys.CountAsync(x => x.IsActive),
+            RevokedKeys = await _context.ApiKeys.CountAsync(x => !x.IsActive),
+            ExpiredKeys = await _context.ApiKeys.CountAsync(x => x.ExpiresAt != null && x.ExpiresAt <= now),
+            UnusedKeys = await _context.ApiKeys.CountAsync(x => x.LastUsedAt == null),
+            MostRecentUsageAt = await _context.ApiKeys
+                .Where(x => x.LastUsedAt != null)
+                .MaxAsync(x => x.LastUsedAt)
+        };
+
+        return ApiResponse<ApiKeyUsageSummaryDto>.Ok(summary);
+    }
+
+    public async Task<ApiResponse<List<StaleApiKeyDto>>> GetStaleKeysAsync(int days = 30)
+    {
+        if (days <= 0)
+            return ApiResponse<List<StaleApiKeyDto>>.Fail("Days must be greater than zero.");
+
+        var now = DateTime.UtcNow;
+        var cutoff = now.AddDays(-days);
+
+        var keys = await _context.ApiKeys
+            .AsNoTracking()
+            .Where(x =>
+                x.IsActive &&
+                (
+                    x.LastUsedAt == null ||
+                    x.LastUsedAt <= cutoff
+                ))
+            .OrderBy(x => x.LastUsedAt ?? x.CreatedAt)
+            .Select(x => new StaleApiKeyDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                CreatedAt = x.CreatedAt,
+                LastUsedAt = x.LastUsedAt,
+                ExpiresAt = x.ExpiresAt,
+                DaysSinceLastUse = x.LastUsedAt == null
+                    ? EF.Functions.DateDiffDay(x.CreatedAt, now)
+                    : EF.Functions.DateDiffDay(x.LastUsedAt.Value, now)
+            })
+            .ToListAsync();
+
+        return ApiResponse<List<StaleApiKeyDto>>.Ok(keys);
+    }
 }

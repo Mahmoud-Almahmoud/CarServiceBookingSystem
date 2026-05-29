@@ -54,4 +54,44 @@ public class ApiKeysController : ControllerBase
         var result = await _apiKeyService.GetAllAsync();
         return Ok(result);
     }
+
+    [HttpGet("usage")]
+    [Authorize(Policy = Permissions.ApiKeys.ViewUsage)]
+    public async Task<IActionResult> GetUsage([FromQuery] ApiKeyUsageQuery query)
+    {
+        var response = await _apiKeyService.GetUsageAsync(query);
+        return Ok(response);
+    }
+
+    [HttpGet("{apiKeyId:int}/usage")]
+    [Authorize(Policy = Permissions.ApiKeys.ViewUsage)]
+    public async Task<IActionResult> GetUsageById(int apiKeyId)
+    {
+        var response = await _apiKeyService.GetUsageByIdAsync(apiKeyId);
+
+        if (!response.Success)
+            return NotFound(response);
+
+        return Ok(response);
+    }
+
+    [HttpGet("usage/summary")]
+    [Authorize(Policy = Permissions.ApiKeys.ViewUsage)]
+    public async Task<IActionResult> GetUsageSummary()
+    {
+        var response = await _apiKeyService.GetUsageSummaryAsync();
+        return Ok(response);
+    }
+
+    [HttpGet("usage/stale")]
+    [Authorize(Policy = Permissions.ApiKeys.ViewUsage)]
+    public async Task<IActionResult> GetStaleKeys([FromQuery] int days = 30)
+    {
+        var response = await _apiKeyService.GetStaleKeysAsync(days);
+
+        if (!response.Success)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
 }
