@@ -4,15 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace CarServiceBookingSystem.Application.DTOs.Auth
+namespace CarServiceBookingSystem.Application.DTOs.Security
 {
-    public class SecurityAuditLogRequest : PagedRequest
+    public sealed class MyActivityRequest : PagedRequest
     {
-        public string? UserId { get; set; }
         public SecurityAuditEventType? EventType { get; set; }
-        public string? IpAddress { get; set; }
-        public string? Country { get; set; }
-
         public DateTime? FromUtc { get; set; }
         public DateTime? ToUtc { get; set; }
     }

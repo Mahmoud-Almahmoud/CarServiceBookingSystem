@@ -2,6 +2,7 @@
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.UnitTests.TestHelpers;
@@ -875,7 +876,7 @@ public class AuthServiceTests
         context.SecurityAuditLogs.Add(new SecurityAuditLog
         {
             UserId = "user-id",
-            EventType = "LoginSuccess",
+            EventType = SecurityAuditEventType.LoginSucceeded,
             IpAddress = "1.1.1.1",
             Device = "Chrome",
             Country = "United Arab Emirates",
@@ -935,7 +936,7 @@ public class AuthServiceTests
         securityAuditServiceMock.Verify(x =>
             x.LogAsync(
                 "user-id",
-                "SuspiciousLoginDetected",
+                SecurityAuditEventType.SuspiciousLogin,
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
                 "Germany",
@@ -952,7 +953,7 @@ public class AuthServiceTests
         context.SecurityAuditLogs.Add(new SecurityAuditLog
         {
             UserId = "user-id",
-            EventType = "LoginSuccess",
+            EventType = SecurityAuditEventType.LoginSucceeded,
             Country = "Germany",
             City = "Berlin",
             CreatedAt = DateTime.UtcNow.AddDays(-1)
@@ -1010,7 +1011,7 @@ public class AuthServiceTests
         securityAuditServiceMock.Verify(x =>
             x.LogAsync(
                 "user-id",
-                "SuspiciousGeoLoginDetected",
+                SecurityAuditEventType.SuspiciousLogin,
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
