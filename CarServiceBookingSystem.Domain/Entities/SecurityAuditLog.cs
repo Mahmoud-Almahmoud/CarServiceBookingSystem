@@ -1,10 +1,12 @@
-﻿namespace CarServiceBookingSystem.Domain.Entities;
+﻿using CarServiceBookingSystem.Domain.Enums;
+
+namespace CarServiceBookingSystem.Domain.Entities;
 
 public class SecurityAuditLog : BaseEntity
 {
     public string UserId { get; set; } = string.Empty;
 
-    public string EventType { get; set; } = string.Empty;
+    public SecurityAuditEventType EventType { get; set; }
 
     public string? IpAddress { get; set; }
 

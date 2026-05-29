@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 
 namespace CarServiceBookingSystem.Infrastructure.Services;
@@ -15,7 +16,7 @@ public class SecurityAuditService : ISecurityAuditService
 
     public async Task LogAsync(
     string userId,
-    string eventType,
+    SecurityAuditEventType eventType,
     string? ipAddress = null,
     string? device = null,
     string? country = null,
