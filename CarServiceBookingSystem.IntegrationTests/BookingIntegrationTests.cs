@@ -124,7 +124,7 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
                 UserId = userId,
                 CarId = myCar.Id,
                 ServiceId = service.Id,
-                LocationType = ServiceLocationType.AtWorkshop,
+                LocationType = ServiceLocationType.OnStore,
                 StartDate = DateTime.UtcNow.AddDays(1),
                 EndDate = DateTime.UtcNow.AddDays(1).AddMinutes(30),
                 Status = BookingStatus.Pending
@@ -134,7 +134,7 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
                 UserId = "other-user-id",
                 CarId = otherCar.Id,
                 ServiceId = service.Id,
-                LocationType = ServiceLocationType.AtWorkshop,
+                LocationType = ServiceLocationType.OnStore,
                 StartDate = DateTime.UtcNow.AddDays(1),
                 EndDate = DateTime.UtcNow.AddDays(1).AddMinutes(30),
                 Status = BookingStatus.Pending
@@ -190,7 +190,7 @@ public class BookingIntegrationTests : IClassFixture<CustomWebApplicationFactory
             UserId = "customer-user-id",
             CarId = car.Id,
             ServiceId = service.Id,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1),
             EndDate = DateTime.UtcNow.AddDays(1).AddMinutes(30),
             Status = BookingStatus.Pending

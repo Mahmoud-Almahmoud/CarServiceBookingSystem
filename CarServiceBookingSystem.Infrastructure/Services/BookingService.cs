@@ -14,19 +14,25 @@ public class BookingService : IBookingService
     private readonly ICurrentUserService _currentUserService;
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly IEmailService _emailService;
+    private readonly IBookingAvailabilityService _bookingAvailabilityService;
 
     public BookingService(
         ApplicationDbContext context,
-        ICurrentUserService currentUserService, IBackgroundJobService backgroundJobService, IEmailService emailService)
+        ICurrentUserService currentUserService, 
+        IBackgroundJobService backgroundJobService, 
+        IEmailService emailService, 
+        IBookingAvailabilityService bookingAvailabilityService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _backgroundJobService = backgroundJobService;
         _emailService = emailService;
+        _bookingAvailabilityService = bookingAvailabilityService;
     }               
 
-    public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request)
+    public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request, CancellationToken cancellationToken = default)
     {
+       
         var userId = _currentUserService.UserId;
 
         if (string.IsNullOrWhiteSpace(userId))
@@ -46,6 +52,24 @@ public class BookingService : IBookingService
 
         if (request.StartDate <= DateTime.UtcNow)
             return ApiResponse<BookingResponse>.Fail("Start date must be in the future");
+
+        var endDate = request.StartDate.AddMinutes(service.DurationInMinutes);
+
+        var isSlotAvailable = await _bookingAvailabilityService.IsSlotAvailableAsync(
+            request.StartDate,
+            endDate,
+            request.LocationType,
+            excludedBookingId: null,
+            cancellationToken);
+
+        if (!isSlotAvailable)
+        {
+            return new ApiResponse<BookingResponse>
+            {
+                Success = false,
+                Message = "Selected time slot is not available."
+            };
+        }
 
         var booking = new Booking
         {

@@ -25,12 +25,14 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var service = new Service
         {
@@ -56,7 +58,7 @@ public class BookingServiceTests
         {
             CarId = car.Id,
             ServiceId = service.Id,
-            LocationType = ServiceLocationType.OnSite,
+            LocationType = ServiceLocationType.OnUserSite,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -83,18 +85,20 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var request = new CreateBookingRequest
         {
             CarId = 999,
             ServiceId = 1,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -114,12 +118,14 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var car = new Car
         {
@@ -135,7 +141,7 @@ public class BookingServiceTests
         {
             CarId = car.Id,
             ServiceId = 999,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -154,12 +160,14 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var service = new Service
         {
@@ -183,7 +191,7 @@ public class BookingServiceTests
         {
             CarId = car.Id,
             ServiceId = service.Id,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(-1)
         };
 
@@ -202,12 +210,14 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var service = new Service
         {
@@ -232,7 +242,7 @@ public class BookingServiceTests
             UserId = "test-user-id",
             CarId = car.Id,
             ServiceId = service.Id,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1),
             EndDate = DateTime.UtcNow.AddDays(1).AddMinutes(30),
             Status = BookingStatus.Pending
@@ -265,12 +275,14 @@ public class BookingServiceTests
 
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
+        var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
-            emailServiceMock.Object);
+            emailServiceMock.Object,
+            bookingAvailabilityServiceMock.Object);
 
         var user = new ApplicationUser
         {
@@ -305,7 +317,7 @@ public class BookingServiceTests
             UserId = "test-user-id",
             CarId = car.Id,
             ServiceId = service.Id,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1),
             EndDate = DateTime.UtcNow.AddDays(1).AddMinutes(30),
             Status = BookingStatus.Pending

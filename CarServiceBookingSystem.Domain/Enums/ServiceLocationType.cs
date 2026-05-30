@@ -6,7 +6,7 @@ namespace CarServiceBookingSystem.Domain.Enums
 {
     public enum ServiceLocationType
     {
-        AtWorkshop = 1,
-        OnSite = 2
+        OnStore = 1,
+        OnUserSite = 2
     }
 }

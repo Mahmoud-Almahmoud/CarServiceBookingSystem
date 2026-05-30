@@ -1,0 +1,18 @@
+﻿using CarServiceBookingSystem.Domain.Enums;
+
+namespace CarServiceBookingSystem.Application.DTOs.Bookings;
+
+public class BookingQuoteRequest
+{
+    public int CarId { get; set; }
+
+    public int ServiceId { get; set; }
+
+    public ServiceLocationType LocationType { get; set; }
+
+    public DateTime StartDate { get; set; }
+
+    public decimal? CustomerLatitude { get; set; }
+
+    public decimal? CustomerLongitude { get; set; }
+}
