@@ -8,6 +8,7 @@ public static class Permissions
         public const string Create = "Services.Create";
         public const string Update = "Services.Update";
         public const string Delete = "Services.Delete";
+        public const string Manage = "Services.Manage";
     }
 
     public static class Bookings
@@ -16,6 +17,7 @@ public static class Permissions
         public const string ViewAll = "Bookings.ViewAll";
         public const string Create = "Bookings.Create";
         public const string UpdateStatus = "Bookings.UpdateStatus";
+        public const string Manage = "Bookings.Manage";
     }
 
     public static class Cars
