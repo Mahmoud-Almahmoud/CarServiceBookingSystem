@@ -2,9 +2,11 @@
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
@@ -15,14 +17,21 @@ namespace CarServiceBookingSystem.API.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IBookingQuoteService _bookingQuoteService;
+    private readonly IBookingAvailabilityService _bookingAvailabilityService;
 
-    public BookingsController(IBookingService bookingService)
+    public BookingsController(IBookingService bookingService, 
+        IBookingQuoteService bookingQuoteService, 
+        IBookingAvailabilityService bookingAvailabilityService)
     {
         _bookingService = bookingService;
+        _bookingQuoteService = bookingQuoteService;
+        _bookingAvailabilityService = bookingAvailabilityService;
     }
 
     [HttpPost]
     [ServiceFilter(typeof(ValidationFilter<CreateBookingRequest>))]
+    [Authorize(Policy = Permissions.Bookings.Create)]
     public async Task<IActionResult> Create(CreateBookingRequest request)
     {
         var result = await _bookingService.CreateAsync(request);
@@ -34,6 +43,7 @@ public class BookingsController : ControllerBase
     }
 
     [HttpGet("my-bookings")]
+    [Authorize(Policy = Permissions.Bookings.ViewMine)]
     public async Task<IActionResult> GetMyBookings()
     {
         return Ok(await _bookingService.GetMyBookingsAsync());
@@ -59,5 +69,49 @@ public class BookingsController : ControllerBase
             return NotFound(result);
 
         return Ok(result);
+    }
+
+    [HttpPost("quote")]
+    [Authorize(Policy = Permissions.Bookings.Create)]
+    public async Task<IActionResult> GetQuote(
+    [FromBody] BookingQuoteRequest request,
+    CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var response = await _bookingQuoteService.GetQuoteAsync(
+            request,
+            userId,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpGet("available-slots")]
+    [Authorize(Policy = Permissions.Bookings.ViewMine)]
+    public async Task<IActionResult> GetAvailableSlots(
+       [FromQuery] AvailableSlotsRequest request,
+       CancellationToken cancellationToken)
+    {
+        var response = await _bookingAvailabilityService.GetAvailableSlotsAsync(
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
     }
 }

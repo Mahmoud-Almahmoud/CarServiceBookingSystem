@@ -5,7 +5,7 @@ namespace CarServiceBookingSystem.Application.Interfaces;
 
 public interface IBookingService
 {
-    Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request);
+    Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request, CancellationToken cancellationToken = default);
     Task<ApiResponse<List<BookingResponse>>> GetMyBookingsAsync();
     Task<ApiResponse<PagedResponse<BookingResponse>>> GetAllAsync(BookingQueryRequest request);
     Task<ApiResponse<BookingResponse>> UpdateStatusAsync(int bookingId, UpdateBookingStatusRequest request);

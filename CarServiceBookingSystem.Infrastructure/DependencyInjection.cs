@@ -1,6 +1,7 @@
 ﻿using CarServiceBookingSystem.Application.Common.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
+using CarServiceBookingSystem.Application.Options;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
@@ -41,6 +42,8 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        services.Configure<BookingQuoteOptions>(configuration.GetSection("BookingQuote"));
+        services.Configure<BookingAvailabilityOptions>(configuration.GetSection("BookingAvailability"));
 
         var jwtSettings = configuration
             .GetSection("JwtSettings")
@@ -69,6 +72,7 @@ public static class DependencyInjection
         });
 
         services.AddMemoryCache();
+        
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -79,7 +83,6 @@ public static class DependencyInjection
         services.AddScoped<IServiceService, ServiceService>();
         services.AddScoped<IBookingService, BookingService>();
         services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
-
         services.AddScoped<IPaymentService, StripePaymentService>();
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
         services.AddScoped<IEmailService, EmailService>();
@@ -100,7 +103,10 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IBookingQuoteService, BookingQuoteService>();
+        services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
         services.AddScoped<IServicePricingService, ServicePricingService>();
+        services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
 
         return services;
     }
