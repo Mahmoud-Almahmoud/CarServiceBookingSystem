@@ -107,6 +107,7 @@ public static class DependencyInjection
         services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
         services.AddScoped<IServicePricingService, ServicePricingService>();
         services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
+        services.AddScoped<IServiceAreaService, ServiceAreaService>();
 
         return services;
     }

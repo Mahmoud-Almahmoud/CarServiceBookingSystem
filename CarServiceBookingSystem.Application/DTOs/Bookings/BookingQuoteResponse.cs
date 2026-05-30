@@ -41,4 +41,11 @@ public class BookingQuoteResponse
     public int? ServicePriceRuleId { get; set; }
 
     public string PricingSource { get; set; } = string.Empty;
+    public string? CustomerCountryCode { get; set; }
+
+    public string? CustomerCity { get; set; }
+
+    public int? MatchedServiceAreaRuleId { get; set; }
+
+    public string? MatchedServiceAreaRuleScope { get; set; }
 }

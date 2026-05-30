@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<IdempotencyKey> IdempotencyKeys { get; set; }
     public DbSet<StripeWebhookEvent> StripeWebhookEvents { get; set; }
+    public DbSet<ServiceAreaRule> ServiceAreaRules => Set<ServiceAreaRule>();
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -82,6 +83,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TrustedDevice>().HasQueryFilter(x => !x.IsDeleted);
 
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        builder.Entity<ServiceAreaRule>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.CountryCode)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entity.Property(x => x.City)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.IsAllowed)
+                .IsRequired();
+
+            entity.Property(x => x.Priority)
+                .IsRequired();
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.Service)
+                .WithMany()
+                .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceId,
+                x.CountryCode,
+                x.City,
+                x.IsActive
+            });
+
+            entity.HasIndex(x => x.Priority);
+        });
         builder.Entity<StripeWebhookEvent>(entity =>
         {
             entity.HasKey(x => x.Id);

@@ -15,4 +15,7 @@ public class BookingQuoteRequest
     public decimal? CustomerLatitude { get; set; }
 
     public decimal? CustomerLongitude { get; set; }
+    public string? CustomerCountryCode { get; set; }
+
+    public string? CustomerCity { get; set; }
 }

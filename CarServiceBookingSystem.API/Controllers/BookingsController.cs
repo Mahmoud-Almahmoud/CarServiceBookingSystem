@@ -73,20 +73,12 @@ public class BookingsController : ControllerBase
 
     [HttpPost("quote")]
     [Authorize(Policy = Permissions.Bookings.Create)]
-    public async Task<IActionResult> GetQuote(
-    [FromBody] BookingQuoteRequest request,
-    CancellationToken cancellationToken)
+    [ServiceFilter(typeof(ValidationFilter<BookingQuoteRequest>))]
+    public async Task<IActionResult> GetQuote([FromBody] BookingQuoteRequest request,CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return Unauthorized();
-        }
 
         var response = await _bookingQuoteService.GetQuoteAsync(
             request,
-            userId,
             cancellationToken);
 
         if (!response.Success)
