@@ -25,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CarTrim> CarTrims => Set<CarTrim>();
     public DbSet<Car> Cars => Set<Car>();
     public DbSet<Service> Services => Set<Service>();
+    public DbSet<ServicePriceRule> ServicePriceRules => Set<ServicePriceRule>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -136,6 +137,53 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithOne(x => x.Service)
             .HasForeignKey(x => x.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ServicePriceRule>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Price)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.DurationMinutes)
+                .IsRequired();
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.Service)
+                .WithMany(x => x.PriceRules)
+                .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.CarBrand)
+                .WithMany()
+                .HasForeignKey(x => x.CarBrandId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.CarModel)
+                .WithMany()
+                .HasForeignKey(x => x.CarModelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.CarTrim)
+                .WithMany()
+                .HasForeignKey(x => x.CarTrimId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.ServiceId);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceId,
+                x.CarBrandId,
+                x.CarModelId,
+                x.CarTrimId,
+                x.CarYearId,
+                x.IsActive
+            });
+        });
 
         builder.Entity<Booking>()
             .HasOne(x => x.Payment)
