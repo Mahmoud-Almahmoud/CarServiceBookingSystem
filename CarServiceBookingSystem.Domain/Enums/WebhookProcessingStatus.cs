@@ -6,10 +6,8 @@ namespace CarServiceBookingSystem.Domain.Enums
 {
     public enum WebhookProcessingStatus
     {
-        Processed,
-        AlreadyProcessed,
-        Ignored,
-        Invalid,
-        Failed
+        Pending = 1,
+        Processed = 2,
+        Failed = 3
     }
 }

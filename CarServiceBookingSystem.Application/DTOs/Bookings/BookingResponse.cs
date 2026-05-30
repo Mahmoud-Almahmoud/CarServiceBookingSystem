@@ -12,6 +12,25 @@ public class BookingResponse
     public int ServiceId { get; set; }
     public string ServiceName { get; set; } = string.Empty;
     public decimal ServicePrice { get; set; }
+    public decimal TravelFee { get; set; }
+
+    public decimal TotalPrice { get; set; }
+
+    public decimal? CustomerLatitude { get; set; }
+
+    public decimal? CustomerLongitude { get; set; }
+
+    public string? CustomerCountryCode { get; set; }
+
+    public string? CustomerCity { get; set; }
+
+    public double? DistanceKm { get; set; }
+
+    public int? EstimatedTravelTimeMinutes { get; set; }
+
+    public int? ServicePriceRuleId { get; set; }
+
+    public int? ServiceAreaRuleId { get; set; }
 
     public ServiceLocationType LocationType { get; set; }
 
