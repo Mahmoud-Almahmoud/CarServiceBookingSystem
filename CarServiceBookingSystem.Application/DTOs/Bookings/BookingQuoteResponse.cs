@@ -31,6 +31,7 @@ public class BookingQuoteResponse
     public decimal? CustomerLatitude { get; set; }
 
     public decimal? CustomerLongitude { get; set; }
+    public string? CustomerFormattedAddress { get; set; }
 
     public double? DistanceKm { get; set; }
 

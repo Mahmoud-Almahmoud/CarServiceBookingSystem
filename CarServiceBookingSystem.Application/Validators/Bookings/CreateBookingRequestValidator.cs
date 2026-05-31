@@ -37,18 +37,6 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
                 .WithMessage("CustomerLongitude is required for customer-site bookings.")
                 .InclusiveBetween(-180, 180)
                 .WithMessage("CustomerLongitude must be between -180 and 180.");
-
-            RuleFor(x => x.CustomerCountryCode)
-                .NotEmpty()
-                .WithMessage("CustomerCountryCode is required for customer-site bookings.")
-                .MaximumLength(10)
-                .WithMessage("CustomerCountryCode cannot exceed 10 characters.");
-
-            RuleFor(x => x.CustomerCity)
-                .NotEmpty()
-                .WithMessage("CustomerCity is required for customer-site bookings.")
-                .MaximumLength(100)
-                .WithMessage("CustomerCity cannot exceed 100 characters.");
         });
 
         When(x => x.LocationType == ServiceLocationType.OnStore, () =>

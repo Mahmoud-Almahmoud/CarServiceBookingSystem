@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Stripe;
 using System.Text;
@@ -73,6 +74,46 @@ public static class DependencyInjection
             };
         });
 
+        //services.Configure<GoogleMapsOptions>(configuration.GetSection("GoogleMaps"));
+
+        //services.AddHttpClient<IReverseGeocodingService, GoogleReverseGeocodingService>((serviceProvider, client) =>
+        //{
+        //    var options = serviceProvider
+        //        .GetRequiredService<IOptions<GoogleMapsOptions>>()
+        //        .Value;
+
+        //    client.BaseAddress = new Uri(options.GeocodingBaseUrl);
+        //});
+
+        //services.AddHttpClient<ITravelEstimateService, GoogleRoutesTravelEstimateService>((serviceProvider, client) =>
+        //{
+        //    var options = serviceProvider
+        //        .GetRequiredService<IOptions<GoogleMapsOptions>>()
+        //        .Value;
+
+        //    client.BaseAddress = new Uri(options.RoutesBaseUrl);
+        //});
+
+        services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
+
+        services.AddHttpClient<IReverseGeocodingService, OpenRouteServiceReverseGeocodingService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<OpenRouteServiceOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
+        services.AddHttpClient<ITravelEstimateService, OpenRouteServiceTravelEstimateService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<OpenRouteServiceOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
         StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
 
         services.AddMemoryCache();
@@ -105,7 +146,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IBookingQuoteService, BookingQuoteService>();
-        services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
+        //services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
         services.AddScoped<IServicePricingService, ServicePricingService>();
         services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
         services.AddScoped<IServiceAreaService, ServiceAreaService>();
