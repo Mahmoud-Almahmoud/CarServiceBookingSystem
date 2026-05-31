@@ -45,4 +45,18 @@ public interface IServiceBranchService
         decimal customerLatitude,
         decimal customerLongitude,
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<List<BranchWorkingHourResponse>>> GetWorkingHoursAsync(
+    int branchId,
+    CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<List<BranchWorkingHourResponse>>> UpdateWorkingHoursAsync(
+        int branchId,
+        UpdateBranchWorkingHoursRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<ServiceBranchSelectionResponse>> GetBranchForStoreBookingAsync(
+        int branchId,
+        int serviceId,
+        CancellationToken cancellationToken = default);
 }

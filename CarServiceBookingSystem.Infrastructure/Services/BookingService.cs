@@ -48,6 +48,7 @@ public class BookingService : IBookingService
             {
                 CarId = request.CarId,
                 ServiceId = request.ServiceId,
+                ServiceBranchId = request.ServiceBranchId,
                 LocationType = request.LocationType,
                 StartDate = request.StartDate,
                 CustomerLatitude = request.CustomerLatitude,

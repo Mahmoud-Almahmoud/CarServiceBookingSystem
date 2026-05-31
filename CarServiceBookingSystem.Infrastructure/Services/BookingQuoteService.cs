@@ -104,6 +104,36 @@ public class BookingQuoteService : IBookingQuoteService
         double? distanceKm = null;
         int? estimatedTravelTimeMinutes = null;
 
+        if (request.LocationType == ServiceLocationType.OnStore)
+        {
+            if (!request.ServiceBranchId.HasValue)
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = false,
+                    Message = "ServiceBranchId is required for store-site bookings."
+                };
+            }
+
+            var branchResponse = await _serviceBranchService.GetBranchForStoreBookingAsync(
+                request.ServiceBranchId.Value,
+                request.ServiceId,
+                cancellationToken);
+
+            if (!branchResponse.Success || branchResponse.Data is null)
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = false,
+                    Message = branchResponse.Message
+                };
+            }
+
+            serviceBranchId = branchResponse.Data.ServiceBranchId;
+            serviceBranchName = branchResponse.Data.ServiceBranchName;
+            branchStraightLineDistanceKm = 0;
+        }
+
         if (request.LocationType == ServiceLocationType.OnUserSite)
         {
             var geocode = await _reverseGeocodingService.ReverseGeocodeAsync(
@@ -242,6 +272,10 @@ public class BookingQuoteService : IBookingQuoteService
                         DistanceKm = null,
                         EstimatedTravelTimeMinutes = null,
 
+                        ServiceBranchId = serviceBranchId,
+                        ServiceBranchName = serviceBranchName,
+                        BranchStraightLineDistanceKm = branchStraightLineDistanceKm,
+
                         UsedCustomPriceRule = pricing.UsedCustomPriceRule,
                         ServicePriceRuleId = pricing.ServicePriceRuleId,
                         PricingSource = pricing.PricingSource,
@@ -270,7 +304,17 @@ public class BookingQuoteService : IBookingQuoteService
             travelFee = CalculateTravelFee(travelEstimate.DistanceKm);
         }
 
+        if (!serviceBranchId.HasValue)
+        {
+            return new ApiResponse<BookingQuoteResponse>
+            {
+                Success = false,
+                Message = "Service branch could not be selected."
+            };
+        }
+
         var isSlotAvailable = await _bookingAvailabilityService.IsSlotAvailableAsync(
+            serviceBranchId.Value,
             request.StartDate,
             endDate,
             request.LocationType,

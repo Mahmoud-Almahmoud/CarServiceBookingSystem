@@ -164,4 +164,40 @@ public class AdminServiceBranchesController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("{id:int}/working-hours")]
+    public async Task<IActionResult> GetWorkingHours(
+    int id,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.GetWorkingHoursAsync(
+            id,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("{id:int}/working-hours")]
+    public async Task<IActionResult> UpdateWorkingHours(
+    int id,
+    [FromBody] UpdateBranchWorkingHoursRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.UpdateWorkingHoursAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }

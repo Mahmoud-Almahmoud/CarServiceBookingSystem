@@ -17,5 +17,6 @@
         public ICollection<BranchService> BranchServices { get; set; } = new List<BranchService>();
 
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+        public ICollection<BranchWorkingHour> WorkingHours { get; set; } = new List<BranchWorkingHour>();
     }
 }

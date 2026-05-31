@@ -497,6 +497,172 @@ public class ServiceBranchService : IServiceBranchService
         };
     }
 
+    public async Task<ApiResponse<List<BranchWorkingHourResponse>>> GetWorkingHoursAsync(
+    int branchId,
+    CancellationToken cancellationToken = default)
+    {
+        var branchExists = await _context.ServiceBranches
+            .AnyAsync(x => x.Id == branchId, cancellationToken);
+
+        if (!branchExists)
+        {
+            return new ApiResponse<List<BranchWorkingHourResponse>>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var workingHours = await _context.BranchWorkingHours
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .Where(x => x.ServiceBranchId == branchId)
+            .OrderBy(x => x.DayOfWeek)
+            .Select(x => new BranchWorkingHourResponse
+            {
+                Id = x.Id,
+                ServiceBranchId = x.ServiceBranchId,
+                BranchName = x.ServiceBranch.Name,
+                DayOfWeek = x.DayOfWeek,
+                OpenTime = x.OpenTime,
+                CloseTime = x.CloseTime,
+                IsClosed = x.IsClosed
+            })
+            .ToListAsync(cancellationToken);
+
+        return new ApiResponse<List<BranchWorkingHourResponse>>
+        {
+            Success = true,
+            Message = "Branch working hours retrieved successfully.",
+            Data = workingHours
+        };
+    }
+
+    public async Task<ApiResponse<List<BranchWorkingHourResponse>>> UpdateWorkingHoursAsync(
+    int branchId,
+    UpdateBranchWorkingHoursRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var branch = await _context.ServiceBranches
+            .Include(x => x.WorkingHours)
+            .FirstOrDefaultAsync(x => x.Id == branchId, cancellationToken);
+
+        if (branch is null)
+        {
+            return new ApiResponse<List<BranchWorkingHourResponse>>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var duplicateDays = request.WorkingHours
+            .GroupBy(x => x.DayOfWeek)
+            .Where(x => x.Count() > 1)
+            .Select(x => x.Key)
+            .ToList();
+
+        if (duplicateDays.Count > 0)
+        {
+            return new ApiResponse<List<BranchWorkingHourResponse>>
+            {
+                Success = false,
+                Message = "Duplicate working-hour rows are not allowed for the same day."
+            };
+        }
+
+        foreach (var item in request.WorkingHours)
+        {
+            if (!item.IsClosed && item.OpenTime >= item.CloseTime)
+            {
+                return new ApiResponse<List<BranchWorkingHourResponse>>
+                {
+                    Success = false,
+                    Message = $"OpenTime must be before CloseTime for {item.DayOfWeek}."
+                };
+            }
+
+            var existing = branch.WorkingHours
+                .FirstOrDefault(x => x.DayOfWeek == item.DayOfWeek);
+
+            if (existing is null)
+            {
+                branch.WorkingHours.Add(new BranchWorkingHour
+                {
+                    ServiceBranchId = branchId,
+                    DayOfWeek = item.DayOfWeek,
+                    OpenTime = item.OpenTime,
+                    CloseTime = item.CloseTime,
+                    IsClosed = item.IsClosed,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existing.OpenTime = item.OpenTime;
+                existing.CloseTime = item.CloseTime;
+                existing.IsClosed = item.IsClosed;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetWorkingHoursAsync(branchId, cancellationToken);
+    }
+
+    public async Task<ApiResponse<ServiceBranchSelectionResponse>> GetBranchForStoreBookingAsync(
+    int branchId,
+    int serviceId,
+    CancellationToken cancellationToken = default)
+    {
+        var branch = await _context.ServiceBranches
+            .AsNoTracking()
+            .Include(x => x.BranchServices)
+            .FirstOrDefaultAsync(x =>
+                x.Id == branchId &&
+                x.IsActive,
+                cancellationToken);
+
+        if (branch is null)
+        {
+            return new ApiResponse<ServiceBranchSelectionResponse>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var offersService = branch.BranchServices.Any(x =>
+            x.ServiceId == serviceId &&
+            x.IsActive);
+
+        if (!offersService)
+        {
+            return new ApiResponse<ServiceBranchSelectionResponse>
+            {
+                Success = false,
+                Message = "This branch does not offer the selected service."
+            };
+        }
+
+        return new ApiResponse<ServiceBranchSelectionResponse>
+        {
+            Success = true,
+            Message = "Service branch selected successfully.",
+            Data = new ServiceBranchSelectionResponse
+            {
+                ServiceBranchId = branch.Id,
+                ServiceBranchName = branch.Name,
+                CountryCode = branch.CountryCode,
+                City = branch.City,
+                Latitude = branch.Latitude,
+                Longitude = branch.Longitude,
+                StraightLineDistanceKm = 0
+            }
+        };
+    }
+
     private static ServiceBranchResponse ToResponse(ServiceBranch branch)
     {
         return new ServiceBranchResponse

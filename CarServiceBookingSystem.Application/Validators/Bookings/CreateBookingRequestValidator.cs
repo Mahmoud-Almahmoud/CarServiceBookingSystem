@@ -48,6 +48,12 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
             RuleFor(x => x.CustomerLongitude)
                 .Null()
                 .WithMessage("CustomerLongitude must be empty for store-site bookings.");
+
+            RuleFor(x => x.ServiceBranchId)
+                .NotNull()
+                .WithMessage("ServiceBranchId is required for store-site bookings.")
+                .GreaterThan(0)
+                .WithMessage("ServiceBranchId is invalid.");
         });
     }
 }

@@ -38,5 +38,13 @@ public class BookingQuoteRequestValidator : AbstractValidator<BookingQuoteReques
                 .InclusiveBetween(-180, 180)
                 .WithMessage("CustomerLongitude must be between -180 and 180.");
         });
+        When(x => x.LocationType == ServiceLocationType.OnStore, () =>
+        {
+            RuleFor(x => x.ServiceBranchId)
+                .NotNull()
+                .WithMessage("ServiceBranchId is required for store-site bookings.")
+                .GreaterThan(0)
+                .WithMessage("ServiceBranchId is invalid.");
+        });
     }
 }

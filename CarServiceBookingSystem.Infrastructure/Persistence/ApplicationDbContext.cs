@@ -36,6 +36,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<StripeWebhookEvent> StripeWebhookEvents { get; set; }
     public DbSet<ServiceAreaRule> ServiceAreaRules => Set<ServiceAreaRule>();
     public DbSet<ServiceBranch> ServiceBranches => Set<ServiceBranch>();
+    public DbSet<BranchWorkingHour> BranchWorkingHours => Set<BranchWorkingHour>();
 
     public DbSet<BranchService> BranchServices => Set<BranchService>();
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -213,6 +214,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(x => x.Bookings)
                 .HasForeignKey(x => x.ServiceBranchId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.Bookings)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
            
 
@@ -357,6 +363,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             {
                 x.ServiceBranchId,
                 x.ServiceId
+            }).IsUnique();
+        });
+
+        builder.Entity<BranchWorkingHour>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.DayOfWeek)
+                .IsRequired();
+
+            entity.Property(x => x.OpenTime)
+                .IsRequired();
+
+            entity.Property(x => x.CloseTime)
+                .IsRequired();
+
+            entity.Property(x => x.IsClosed)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.WorkingHours)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.DayOfWeek
             }).IsUnique();
         });
     }
