@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace CarServiceBookingSystem.Infrastructure.Services;
 
@@ -524,10 +525,10 @@ public class ServiceAreaService : IServiceAreaService
         return "Global country rule";
     }
 
-    private static string NormalizeCountryCode(string countryCode)
-    {
-        return countryCode.Trim().ToUpper();
-    }
+    //private static string NormalizeCountryCode(string countryCode)
+    //{
+    //    return countryCode.Trim().ToUpper();
+    //}
 
     private static string NormalizeCity(string city)
     {
@@ -539,5 +540,34 @@ public class ServiceAreaService : IServiceAreaService
         return string.IsNullOrWhiteSpace(city)
             ? null
             : NormalizeCity(city);
+    }
+
+    private static string NormalizeCountryCode(string countryCode)
+    {
+        var value = countryCode.Trim().ToUpperInvariant();
+
+        if (value.Length == 2)
+        {
+            return value;
+        }
+
+        if (value.Length == 3)
+        {
+            var region = CultureInfo
+                .GetCultures(CultureTypes.SpecificCultures)
+                .Select(culture => new RegionInfo(culture.Name))
+                .FirstOrDefault(region =>
+                    string.Equals(
+                        region.ThreeLetterISORegionName,
+                        value,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (region is not null)
+            {
+                return region.TwoLetterISORegionName;
+            }
+        }
+
+        return value;
     }
 }

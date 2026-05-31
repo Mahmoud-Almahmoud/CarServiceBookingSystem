@@ -17,6 +17,7 @@ public class BookingQuoteService : IBookingQuoteService
     private readonly BookingQuoteOptions _options;
     private readonly IServiceAreaService _serviceAreaService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IReverseGeocodingService _reverseGeocodingService;
 
     public BookingQuoteService(
         IServicePricingService servicePricingService,
@@ -24,7 +25,8 @@ public class BookingQuoteService : IBookingQuoteService
         ITravelEstimateService travelEstimateService,
         IOptions<BookingQuoteOptions> options,
         IServiceAreaService serviceAreaService,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IReverseGeocodingService reverseGeocodingService)
     {
         _servicePricingService = servicePricingService;
         _bookingAvailabilityService = bookingAvailabilityService;
@@ -32,6 +34,7 @@ public class BookingQuoteService : IBookingQuoteService
         _options = options.Value;
         _serviceAreaService = serviceAreaService;
         _currentUserService = currentUserService;
+        _reverseGeocodingService = reverseGeocodingService;
     }
 
     public async Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(
@@ -43,15 +46,6 @@ public class BookingQuoteService : IBookingQuoteService
         if (string.IsNullOrWhiteSpace(userId))
             return ApiResponse<BookingQuoteResponse>.Fail("User is not authenticated");
 
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return new ApiResponse<BookingQuoteResponse>
-            {
-                Success = false,
-                Message = "User was not found."
-            };
-        }
-
         if (request.StartDate <= DateTime.UtcNow)
         {
             return new ApiResponse<BookingQuoteResponse>
@@ -62,15 +56,12 @@ public class BookingQuoteService : IBookingQuoteService
         }
 
         if (request.LocationType == ServiceLocationType.OnUserSite &&
-            (!request.CustomerLatitude.HasValue ||
-             !request.CustomerLongitude.HasValue ||
-             string.IsNullOrWhiteSpace(request.CustomerCountryCode) ||
-             string.IsNullOrWhiteSpace(request.CustomerCity)))
+            (!request.CustomerLatitude.HasValue || !request.CustomerLongitude.HasValue))
         {
             return new ApiResponse<BookingQuoteResponse>
             {
                 Success = false,
-                Message = "Customer latitude, longitude, country code, and city are required for customer-site bookings."
+                Message = "Customer latitude and longitude are required for customer-site bookings."
             };
         }
 
@@ -93,20 +84,62 @@ public class BookingQuoteService : IBookingQuoteService
         }
 
         var pricing = pricingResponse.Data;
-
         var endDate = request.StartDate.AddMinutes(pricing.DurationMinutes);
+
+        string? customerCountryCode = null;
+        string? customerCity = null;
+        string? customerAddress = null;
 
         int? matchedServiceAreaRuleId = null;
         string? matchedServiceAreaRuleScope = null;
 
+        decimal travelFee = 0;
+        double? distanceKm = null;
+        int? estimatedTravelTimeMinutes = null;
+
         if (request.LocationType == ServiceLocationType.OnUserSite)
         {
+            var geocode = await _reverseGeocodingService.ReverseGeocodeAsync(
+                request.CustomerLatitude!.Value,
+                request.CustomerLongitude!.Value,
+                cancellationToken);
+
+            customerCountryCode =
+                !string.IsNullOrWhiteSpace(geocode?.CountryCode)
+                    ? NormalizeCountryCode(geocode.CountryCode)
+                    : NormalizeCountryCode(request.CustomerCountryCode);
+
+            customerCity =
+                !string.IsNullOrWhiteSpace(geocode?.City)
+                    ? NormalizeCityForDisplay(geocode.City)
+                    : NormalizeCityForDisplay(request.CustomerCity);
+
+            customerAddress = geocode?.FormattedAddress;
+
+            if (string.IsNullOrWhiteSpace(customerCountryCode))
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = false,
+                    Message = "Could not determine customer country from location."
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(customerCity))
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = false,
+                    Message = "Could not determine customer city from location."
+                };
+            }
+
             var areaResponse = await _serviceAreaService.CheckAvailabilityAsync(
                 new ServiceAreaCheckRequest
                 {
                     ServiceId = request.ServiceId,
-                    CountryCode = request.CustomerCountryCode!,
-                    City = request.CustomerCity
+                    CountryCode = customerCountryCode,
+                    City = customerCity
                 },
                 cancellationToken);
 
@@ -147,8 +180,9 @@ public class BookingQuoteService : IBookingQuoteService
 
                         CustomerLatitude = request.CustomerLatitude,
                         CustomerLongitude = request.CustomerLongitude,
-                        CustomerCountryCode = NormalizeCountryCode(request.CustomerCountryCode),
-                        CustomerCity = NormalizeCityForDisplay(request.CustomerCity),
+                        CustomerCountryCode = customerCountryCode,
+                        CustomerCity = customerCity,
+                        CustomerFormattedAddress = customerAddress,
 
                         DistanceKm = null,
                         EstimatedTravelTimeMinutes = null,
@@ -162,6 +196,17 @@ public class BookingQuoteService : IBookingQuoteService
                     }
                 };
             }
+
+            var travelEstimate = await _travelEstimateService.EstimateAsync(
+                _options.DefaultBranchLatitude,
+                _options.DefaultBranchLongitude,
+                request.CustomerLatitude.Value,
+                request.CustomerLongitude.Value,
+                cancellationToken);
+
+            distanceKm = travelEstimate.DistanceKm;
+            estimatedTravelTimeMinutes = travelEstimate.EstimatedTravelTimeMinutes;
+            travelFee = CalculateTravelFee(travelEstimate.DistanceKm);
         }
 
         var isSlotAvailable = await _bookingAvailabilityService.IsSlotAvailableAsync(
@@ -170,25 +215,6 @@ public class BookingQuoteService : IBookingQuoteService
             request.LocationType,
             excludedBookingId: null,
             cancellationToken);
-
-        decimal travelFee = 0;
-        double? distanceKm = null;
-        int? estimatedTravelTimeMinutes = null;
-
-        if (request.LocationType == ServiceLocationType.OnUserSite)
-        {
-            var travelEstimate = await _travelEstimateService.EstimateAsync(
-                _options.DefaultBranchLatitude,
-                _options.DefaultBranchLongitude,
-                request.CustomerLatitude!.Value,
-                request.CustomerLongitude!.Value,
-                cancellationToken);
-
-            distanceKm = travelEstimate.DistanceKm;
-            estimatedTravelTimeMinutes = travelEstimate.EstimatedTravelTimeMinutes;
-
-            travelFee = CalculateTravelFee(travelEstimate.DistanceKm);
-        }
 
         var response = new BookingQuoteResponse
         {
@@ -218,11 +244,15 @@ public class BookingQuoteService : IBookingQuoteService
                 : null,
 
             CustomerCountryCode = request.LocationType == ServiceLocationType.OnUserSite
-                ? NormalizeCountryCode(request.CustomerCountryCode)
+                ? customerCountryCode
                 : null,
 
             CustomerCity = request.LocationType == ServiceLocationType.OnUserSite
-                ? NormalizeCityForDisplay(request.CustomerCity)
+                ? customerCity
+                : null,
+
+            CustomerFormattedAddress = request.LocationType == ServiceLocationType.OnUserSite
+                ? customerAddress
                 : null,
 
             DistanceKm = distanceKm,

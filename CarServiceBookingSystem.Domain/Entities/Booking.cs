@@ -35,6 +35,7 @@ namespace CarServiceBookingSystem.Domain.Entities
         public string? CustomerCountryCode { get; set; }
 
         public string? CustomerCity { get; set; }
+        public string? CustomerFormattedAddress { get; set; }
 
         public double? DistanceKm { get; set; }
 
