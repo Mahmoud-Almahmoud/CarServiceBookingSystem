@@ -59,4 +59,30 @@ public interface IServiceBranchService
         int branchId,
         int serviceId,
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<PagedResponse<BranchClosureResponse>>> GetClosuresAsync(
+    int branchId,
+    BranchClosureFilterRequest request,
+    CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchClosureResponse>> GetClosureByIdAsync(
+        int branchId,
+        int closureId,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchClosureResponse>> CreateClosureAsync(
+        int branchId,
+        CreateBranchClosureRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchClosureResponse>> UpdateClosureAsync(
+        int branchId,
+        int closureId,
+        UpdateBranchClosureRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<string>> DeleteClosureAsync(
+        int branchId,
+        int closureId,
+        CancellationToken cancellationToken = default);
 }

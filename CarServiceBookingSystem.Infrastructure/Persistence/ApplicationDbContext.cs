@@ -37,8 +37,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ServiceAreaRule> ServiceAreaRules => Set<ServiceAreaRule>();
     public DbSet<ServiceBranch> ServiceBranches => Set<ServiceBranch>();
     public DbSet<BranchWorkingHour> BranchWorkingHours => Set<BranchWorkingHour>();
-
     public DbSet<BranchService> BranchServices => Set<BranchService>();
+    public DbSet<BranchClosure> BranchClosures => Set<BranchClosure>();
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -392,6 +393,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 x.ServiceBranchId,
                 x.DayOfWeek
             }).IsUnique();
+        });
+
+        builder.Entity<BranchClosure>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.StartDate)
+                .IsRequired();
+
+            entity.Property(x => x.EndDate)
+                .IsRequired();
+
+            entity.Property(x => x.IsFullDay)
+                .IsRequired();
+
+            entity.Property(x => x.Type)
+                .IsRequired();
+
+            entity.Property(x => x.Reason)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.Closures)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.StartDate,
+                x.EndDate,
+                x.IsActive
+            });
         });
     }
 }

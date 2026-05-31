@@ -18,5 +18,6 @@
 
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public ICollection<BranchWorkingHour> WorkingHours { get; set; } = new List<BranchWorkingHour>();
+        public ICollection<BranchClosure> Closures { get; set; } = new List<BranchClosure>();
     }
 }

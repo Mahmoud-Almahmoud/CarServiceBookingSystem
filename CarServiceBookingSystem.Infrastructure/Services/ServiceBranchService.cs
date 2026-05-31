@@ -663,6 +663,368 @@ public class ServiceBranchService : IServiceBranchService
         };
     }
 
+    public async Task<ApiResponse<PagedResponse<BranchClosureResponse>>> GetClosuresAsync(
+    int branchId,
+    BranchClosureFilterRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var branchExists = await _context.ServiceBranches
+            .AnyAsync(x => x.Id == branchId, cancellationToken);
+
+        if (!branchExists)
+        {
+            return new ApiResponse<PagedResponse<BranchClosureResponse>>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var pageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
+        var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+        pageSize = pageSize > 100 ? 100 : pageSize;
+
+        var query = _context.BranchClosures
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .Where(x => x.ServiceBranchId == branchId)
+            .AsQueryable();
+
+        if (request.FromDate.HasValue)
+        {
+            var fromDate = request.FromDate.Value.Date;
+            query = query.Where(x => x.EndDate.Date >= fromDate);
+        }
+
+        if (request.ToDate.HasValue)
+        {
+            var toDate = request.ToDate.Value.Date;
+            query = query.Where(x => x.StartDate.Date <= toDate);
+        }
+
+        if (request.Type.HasValue)
+        {
+            query = query.Where(x => x.Type == request.Type.Value);
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == request.IsActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim().ToLower();
+
+            query = query.Where(x =>
+                x.Reason.ToLower().Contains(search) ||
+                x.ServiceBranch.Name.ToLower().Contains(search));
+        }
+
+        query = request.SortBy?.ToLower() switch
+        {
+            "startdate" => request.Desc
+                ? query.OrderByDescending(x => x.StartDate).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.StartDate).ThenBy(x => x.Id),
+
+            "enddate" => request.Desc
+                ? query.OrderByDescending(x => x.EndDate).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.EndDate).ThenBy(x => x.Id),
+
+            "type" => request.Desc
+                ? query.OrderByDescending(x => x.Type).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.Type).ThenBy(x => x.Id),
+
+            "createdat" => request.Desc
+                ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+
+            _ => query.OrderByDescending(x => x.StartDate).ThenByDescending(x => x.Id)
+        };
+
+        var totalRecords = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new BranchClosureResponse
+            {
+                Id = x.Id,
+                ServiceBranchId = x.ServiceBranchId,
+                BranchName = x.ServiceBranch.Name,
+                StartDate = x.StartDate,
+                EndDate = x.EndDate,
+                IsFullDay = x.IsFullDay,
+                StartTime = x.StartTime,
+                EndTime = x.EndTime,
+                Type = x.Type,
+                Reason = x.Reason,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return new ApiResponse<PagedResponse<BranchClosureResponse>>
+        {
+            Success = true,
+            Message = "Branch closures retrieved successfully.",
+            Data = new PagedResponse<BranchClosureResponse>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalRecords
+            }
+        };
+    }
+
+    public async Task<ApiResponse<BranchClosureResponse>> GetClosureByIdAsync(
+    int branchId,
+    int closureId,
+    CancellationToken cancellationToken = default)
+    {
+        var closure = await _context.BranchClosures
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .FirstOrDefaultAsync(x =>
+                x.Id == closureId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (closure is null)
+        {
+            return new ApiResponse<BranchClosureResponse>
+            {
+                Success = false,
+                Message = "Branch closure was not found."
+            };
+        }
+
+        return new ApiResponse<BranchClosureResponse>
+        {
+            Success = true,
+            Message = "Branch closure retrieved successfully.",
+            Data = ToBranchClosureResponse(closure)
+        };
+    }
+
+    public async Task<ApiResponse<BranchClosureResponse>> CreateClosureAsync(
+    int branchId,
+    CreateBranchClosureRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var branchExists = await _context.ServiceBranches
+            .AnyAsync(x => x.Id == branchId, cancellationToken);
+
+        if (!branchExists)
+        {
+            return new ApiResponse<BranchClosureResponse>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var validationResult = ValidateClosureInput(
+            request.StartDate,
+            request.EndDate,
+            request.IsFullDay,
+            request.StartTime,
+            request.EndTime);
+
+        if (!validationResult.Success)
+        {
+            return new ApiResponse<BranchClosureResponse>
+            {
+                Success = false,
+                Message = validationResult.Message
+            };
+        }
+
+        var closure = new BranchClosure
+        {
+            ServiceBranchId = branchId,
+            StartDate = request.StartDate.Date,
+            EndDate = request.EndDate.Date,
+            IsFullDay = request.IsFullDay,
+            StartTime = request.IsFullDay ? null : request.StartTime,
+            EndTime = request.IsFullDay ? null : request.EndTime,
+            Type = request.Type,
+            Reason = request.Reason.Trim(),
+            IsActive = request.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _context.BranchClosures.AddAsync(closure, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var created = await _context.BranchClosures
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .FirstAsync(x => x.Id == closure.Id, cancellationToken);
+
+        return new ApiResponse<BranchClosureResponse>
+        {
+            Success = true,
+            Message = "Branch closure created successfully.",
+            Data = ToBranchClosureResponse(created)
+        };
+    }
+
+    public async Task<ApiResponse<BranchClosureResponse>> UpdateClosureAsync(
+    int branchId,
+    int closureId,
+    UpdateBranchClosureRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var closure = await _context.BranchClosures
+            .Include(x => x.ServiceBranch)
+            .FirstOrDefaultAsync(x =>
+                x.Id == closureId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (closure is null)
+        {
+            return new ApiResponse<BranchClosureResponse>
+            {
+                Success = false,
+                Message = "Branch closure was not found."
+            };
+        }
+
+        var validationResult = ValidateClosureInput(
+            request.StartDate,
+            request.EndDate,
+            request.IsFullDay,
+            request.StartTime,
+            request.EndTime);
+
+        if (!validationResult.Success)
+        {
+            return new ApiResponse<BranchClosureResponse>
+            {
+                Success = false,
+                Message = validationResult.Message
+            };
+        }
+
+        closure.StartDate = request.StartDate.Date;
+        closure.EndDate = request.EndDate.Date;
+        closure.IsFullDay = request.IsFullDay;
+        closure.StartTime = request.IsFullDay ? null : request.StartTime;
+        closure.EndTime = request.IsFullDay ? null : request.EndTime;
+        closure.Type = request.Type;
+        closure.Reason = request.Reason.Trim();
+        closure.IsActive = request.IsActive;
+        closure.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new ApiResponse<BranchClosureResponse>
+        {
+            Success = true,
+            Message = "Branch closure updated successfully.",
+            Data = ToBranchClosureResponse(closure)
+        };
+    }
+
+    public async Task<ApiResponse<string>> DeleteClosureAsync(
+    int branchId,
+    int closureId,
+    CancellationToken cancellationToken = default)
+    {
+        var closure = await _context.BranchClosures
+            .FirstOrDefaultAsync(x =>
+                x.Id == closureId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (closure is null)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Branch closure was not found."
+            };
+        }
+
+        _context.BranchClosures.Remove(closure);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new ApiResponse<string>
+        {
+            Success = true,
+            Message = "Branch closure deleted successfully.",
+            Data = "Deleted"
+        };
+    }
+
+    private static ApiResponse<string> ValidateClosureInput(
+    DateTime startDate,
+    DateTime endDate,
+    bool isFullDay,
+    TimeSpan? startTime,
+    TimeSpan? endTime)
+    {
+        if (startDate.Date > endDate.Date)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "StartDate cannot be after EndDate."
+            };
+        }
+
+        if (!isFullDay)
+        {
+            if (!startTime.HasValue || !endTime.HasValue)
+            {
+                return new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "StartTime and EndTime are required for partial-day closures."
+                };
+            }
+
+            if (startTime.Value >= endTime.Value)
+            {
+                return new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "StartTime must be before EndTime."
+                };
+            }
+        }
+
+        return new ApiResponse<string>
+        {
+            Success = true,
+            Message = "Valid"
+        };
+    }
+
+    private static BranchClosureResponse ToBranchClosureResponse(BranchClosure closure)
+    {
+        return new BranchClosureResponse
+        {
+            Id = closure.Id,
+            ServiceBranchId = closure.ServiceBranchId,
+            BranchName = closure.ServiceBranch.Name,
+            StartDate = closure.StartDate,
+            EndDate = closure.EndDate,
+            IsFullDay = closure.IsFullDay,
+            StartTime = closure.StartTime,
+            EndTime = closure.EndTime,
+            Type = closure.Type,
+            Reason = closure.Reason,
+            IsActive = closure.IsActive,
+            CreatedAt = closure.CreatedAt,
+            UpdatedAt = closure.UpdatedAt
+        };
+    }
+
     private static ServiceBranchResponse ToResponse(ServiceBranch branch)
     {
         return new ServiceBranchResponse

@@ -2,6 +2,7 @@
 using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Options;
+using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -94,6 +95,21 @@ public class BookingAvailabilityService : IBookingAvailabilityService
             };
         }
 
+        var closures = await GetClosuresForDateAsync(
+                request.ServiceBranchId,
+                date,
+                cancellationToken);
+
+        if (HasFullDayClosure(closures))
+        {
+            return new ApiResponse<List<AvailableSlotResponse>>
+            {
+                Success = true,
+                Message = "Branch is closed on this date.",
+                Data = []
+            };
+        }
+
         var serviceDuration = TimeSpan.FromMinutes(service.DurationInMinutes);
 
         if (serviceDuration <= TimeSpan.Zero)
@@ -136,9 +152,16 @@ public class BookingAvailabilityService : IBookingAvailabilityService
 
             var isAfterMinimumNotice = slotStart >= minimumAllowedStartTime;
 
-            var hasConflict = existingBookings.Any(existing =>
+            var hasBookingConflict = existingBookings.Any(existing =>
                 slotStart < existing.EndDate &&
                 slotEnd > existing.StartDate);
+
+            var hasClosureConflict = HasPartialClosureConflict(
+                closures,
+                slotStart,
+                slotEnd);
+
+            var hasConflict = hasBookingConflict || hasClosureConflict;
 
             if (isAfterMinimumNotice && !hasConflict)
             {
@@ -195,6 +218,21 @@ public class BookingAvailabilityService : IBookingAvailabilityService
             return false;
         }
 
+        var closures = await GetClosuresForDateAsync(
+            serviceBranchId,
+            startDate,
+            cancellationToken);
+
+        if (HasFullDayClosure(closures))
+        {
+            return false;
+        }
+
+        if (HasPartialClosureConflict(closures, startDate, endDate))
+        {
+            return false;
+        }
+
         var workDayStart = startDate.Date.Add(workingHour.OpenTime);
         var workDayEnd = startDate.Date.Add(workingHour.CloseTime);
 
@@ -219,5 +257,52 @@ public class BookingAvailabilityService : IBookingAvailabilityService
         var hasConflict = await query.AnyAsync(cancellationToken);
 
         return !hasConflict;
+    }
+
+    private async Task<List<BranchClosure>> GetClosuresForDateAsync(
+    int serviceBranchId,
+    DateTime date,
+    CancellationToken cancellationToken)
+    {
+        var targetDate = date.Date;
+
+        return await _context.BranchClosures
+            .AsNoTracking()
+            .Where(x =>
+                x.ServiceBranchId == serviceBranchId &&
+                x.IsActive &&
+                x.StartDate.Date <= targetDate &&
+                x.EndDate.Date >= targetDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    private static bool HasFullDayClosure(
+    IEnumerable<BranchClosure> closures)
+    {
+        return closures.Any(x => x.IsFullDay);
+    }
+
+    private static bool HasPartialClosureConflict(
+    IEnumerable<BranchClosure> closures,
+    DateTime slotStart,
+    DateTime slotEnd)
+    {
+        foreach (var closure in closures.Where(x => !x.IsFullDay))
+        {
+            if (!closure.StartTime.HasValue || !closure.EndTime.HasValue)
+            {
+                continue;
+            }
+
+            var closureStart = slotStart.Date.Add(closure.StartTime.Value);
+            var closureEnd = slotStart.Date.Add(closure.EndTime.Value);
+
+            if (slotStart < closureEnd && slotEnd > closureStart)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
