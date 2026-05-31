@@ -11,6 +11,9 @@ public class BookingResponse
 
     public int ServiceId { get; set; }
     public string ServiceName { get; set; } = string.Empty;
+    public int? ServiceBranchId { get; set; }
+
+    public string? ServiceBranchName { get; set; }
     public decimal ServicePrice { get; set; }
     public decimal TravelFee { get; set; }
 

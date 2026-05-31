@@ -151,6 +151,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
         services.AddScoped<IServiceAreaService, ServiceAreaService>();
         services.AddScoped<PaymentIntentService>();
+        services.AddScoped<IServiceBranchService, ServiceBranchService>();
 
         return services;
     }

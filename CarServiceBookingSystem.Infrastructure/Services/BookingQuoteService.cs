@@ -18,6 +18,7 @@ public class BookingQuoteService : IBookingQuoteService
     private readonly IServiceAreaService _serviceAreaService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IReverseGeocodingService _reverseGeocodingService;
+    private readonly IServiceBranchService _serviceBranchService;
 
     public BookingQuoteService(
         IServicePricingService servicePricingService,
@@ -26,7 +27,8 @@ public class BookingQuoteService : IBookingQuoteService
         IOptions<BookingQuoteOptions> options,
         IServiceAreaService serviceAreaService,
         ICurrentUserService currentUserService,
-        IReverseGeocodingService reverseGeocodingService)
+        IReverseGeocodingService reverseGeocodingService,
+        IServiceBranchService serviceBranchService)
     {
         _servicePricingService = servicePricingService;
         _bookingAvailabilityService = bookingAvailabilityService;
@@ -35,6 +37,7 @@ public class BookingQuoteService : IBookingQuoteService
         _serviceAreaService = serviceAreaService;
         _currentUserService = currentUserService;
         _reverseGeocodingService = reverseGeocodingService;
+        _serviceBranchService = serviceBranchService;
     }
 
     public async Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(
@@ -64,6 +67,10 @@ public class BookingQuoteService : IBookingQuoteService
                 Message = "Customer latitude and longitude are required for customer-site bookings."
             };
         }
+
+        int? serviceBranchId = null;
+        string? serviceBranchName = null;
+        double? branchStraightLineDistanceKm = null;
 
         var pricingResponse = await _servicePricingService.GetPriceQuoteAsync(
             new ServicePriceQuoteRequest
@@ -197,9 +204,63 @@ public class BookingQuoteService : IBookingQuoteService
                 };
             }
 
+            var branchResponse = await _serviceBranchService.SelectNearestBranchAsync(
+                    request.ServiceId,
+                    request.CustomerLatitude!.Value,
+                    request.CustomerLongitude!.Value,
+                    cancellationToken);
+
+            if (!branchResponse.Success || branchResponse.Data is null)
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = true,
+                    Message = "Booking quote calculated successfully.",
+                    Data = new BookingQuoteResponse
+                    {
+                        CarId = request.CarId,
+                        ServiceId = request.ServiceId,
+                        ServiceName = pricing.ServiceName,
+                        LocationType = request.LocationType,
+                        StartDate = request.StartDate,
+                        EndDate = endDate,
+                        DurationMinutes = pricing.DurationMinutes,
+
+                        ServicePrice = pricing.Price,
+                        TravelFee = 0,
+                        TotalPrice = pricing.Price,
+
+                        IsAvailable = false,
+                        UnavailableReason = branchResponse.Message,
+
+                        CustomerLatitude = request.CustomerLatitude,
+                        CustomerLongitude = request.CustomerLongitude,
+                        CustomerCountryCode = customerCountryCode,
+                        CustomerCity = customerCity,
+                        CustomerFormattedAddress = customerAddress,
+
+                        DistanceKm = null,
+                        EstimatedTravelTimeMinutes = null,
+
+                        UsedCustomPriceRule = pricing.UsedCustomPriceRule,
+                        ServicePriceRuleId = pricing.ServicePriceRuleId,
+                        PricingSource = pricing.PricingSource,
+
+                        MatchedServiceAreaRuleId = matchedServiceAreaRuleId,
+                        MatchedServiceAreaRuleScope = matchedServiceAreaRuleScope
+                    }
+                };
+            }
+
+            var selectedBranch = branchResponse.Data;
+
+            serviceBranchId = selectedBranch.ServiceBranchId;
+            serviceBranchName = selectedBranch.ServiceBranchName;
+            branchStraightLineDistanceKm = selectedBranch.StraightLineDistanceKm;
+
             var travelEstimate = await _travelEstimateService.EstimateAsync(
-                _options.DefaultBranchLatitude,
-                _options.DefaultBranchLongitude,
+                selectedBranch.Latitude,
+                selectedBranch.Longitude,
                 request.CustomerLatitude.Value,
                 request.CustomerLongitude.Value,
                 cancellationToken);
@@ -229,6 +290,10 @@ public class BookingQuoteService : IBookingQuoteService
             ServicePrice = pricing.Price,
             TravelFee = travelFee,
             TotalPrice = pricing.Price + travelFee,
+
+            ServiceBranchId = serviceBranchId,
+            ServiceBranchName = serviceBranchName,
+            BranchStraightLineDistanceKm = branchStraightLineDistanceKm,
 
             IsAvailable = isSlotAvailable,
             UnavailableReason = isSlotAvailable
