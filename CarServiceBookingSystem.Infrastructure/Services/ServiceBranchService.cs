@@ -961,6 +961,430 @@ public class ServiceBranchService : IServiceBranchService
         };
     }
 
+    public async Task<ApiResponse<PagedResponse<BranchCapacityRuleResponse>>> GetCapacityRulesAsync(
+    int branchId,
+    BranchCapacityRuleFilterRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var branchExists = await _context.ServiceBranches
+            .AnyAsync(x => x.Id == branchId, cancellationToken);
+
+        if (!branchExists)
+        {
+            return new ApiResponse<PagedResponse<BranchCapacityRuleResponse>>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var pageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
+        var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+        pageSize = pageSize > 100 ? 100 : pageSize;
+
+        var query = _context.BranchCapacityRules
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .Where(x => x.ServiceBranchId == branchId)
+            .AsQueryable();
+
+        if (request.DayOfWeek.HasValue)
+        {
+            query = query.Where(x => x.DayOfWeek == request.DayOfWeek.Value);
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == request.IsActive.Value);
+        }
+
+        query = request.SortBy?.ToLower() switch
+        {
+            "capacity" => request.Desc
+                ? query.OrderByDescending(x => x.Capacity).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.Capacity).ThenBy(x => x.Id),
+
+            "dayofweek" => request.Desc
+                ? query.OrderByDescending(x => x.DayOfWeek).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.DayOfWeek).ThenBy(x => x.Id),
+
+            "createdat" => request.Desc
+                ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+
+            _ => query.OrderByDescending(x => x.Id)
+        };
+
+        var totalRecords = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new BranchCapacityRuleResponse
+            {
+                Id = x.Id,
+                ServiceBranchId = x.ServiceBranchId,
+                BranchName = x.ServiceBranch.Name,
+                DayOfWeek = x.DayOfWeek,
+                StartTime = x.StartTime,
+                EndTime = x.EndTime,
+                Capacity = x.Capacity,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return new ApiResponse<PagedResponse<BranchCapacityRuleResponse>>
+        {
+            Success = true,
+            Message = "Branch capacity rules retrieved successfully.",
+            Data = new PagedResponse<BranchCapacityRuleResponse>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalRecords
+            }
+        };
+    }
+
+    public async Task<ApiResponse<BranchCapacityRuleResponse>> GetCapacityRuleByIdAsync(
+    int branchId,
+    int capacityRuleId,
+    CancellationToken cancellationToken = default)
+    {
+        var rule = await _context.BranchCapacityRules
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .FirstOrDefaultAsync(x =>
+                x.Id == capacityRuleId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (rule is null)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = "Branch capacity rule was not found."
+            };
+        }
+
+        return new ApiResponse<BranchCapacityRuleResponse>
+        {
+            Success = true,
+            Message = "Branch capacity rule retrieved successfully.",
+            Data = ToBranchCapacityRuleResponse(rule)
+        };
+    }
+
+    public async Task<ApiResponse<BranchCapacityRuleResponse>> CreateCapacityRuleAsync(
+    int branchId,
+    CreateBranchCapacityRuleRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var branchExists = await _context.ServiceBranches
+            .AnyAsync(x => x.Id == branchId, cancellationToken);
+
+        if (!branchExists)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = "Service branch was not found."
+            };
+        }
+
+        var validationResult = ValidateCapacityRuleInput(
+            request.DayOfWeek,
+            request.StartTime,
+            request.EndTime,
+            request.Capacity);
+
+        if (!validationResult.Success)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = validationResult.Message
+            };
+        }
+
+        var duplicateExists = await _context.BranchCapacityRules
+            .AnyAsync(x =>
+                x.ServiceBranchId == branchId &&
+                x.DayOfWeek == request.DayOfWeek &&
+                x.StartTime == request.StartTime &&
+                x.EndTime == request.EndTime,
+                cancellationToken);
+
+        if (duplicateExists)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = "A branch capacity rule with the same schedule already exists."
+            };
+        }
+
+        var rule = new BranchCapacityRule
+        {
+            ServiceBranchId = branchId,
+            DayOfWeek = request.DayOfWeek,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            Capacity = request.Capacity,
+            IsActive = request.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _context.BranchCapacityRules.AddAsync(rule, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var created = await _context.BranchCapacityRules
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .FirstAsync(x => x.Id == rule.Id, cancellationToken);
+
+        return new ApiResponse<BranchCapacityRuleResponse>
+        {
+            Success = true,
+            Message = "Branch capacity rule created successfully.",
+            Data = ToBranchCapacityRuleResponse(created)
+        };
+    }
+
+    public async Task<ApiResponse<BranchCapacityRuleResponse>> UpdateCapacityRuleAsync(
+    int branchId,
+    int capacityRuleId,
+    UpdateBranchCapacityRuleRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var rule = await _context.BranchCapacityRules
+            .Include(x => x.ServiceBranch)
+            .FirstOrDefaultAsync(x =>
+                x.Id == capacityRuleId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (rule is null)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = "Branch capacity rule was not found."
+            };
+        }
+
+        var validationResult = ValidateCapacityRuleInput(
+            request.DayOfWeek,
+            request.StartTime,
+            request.EndTime,
+            request.Capacity);
+
+        if (!validationResult.Success)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = validationResult.Message
+            };
+        }
+
+        var duplicateExists = await _context.BranchCapacityRules
+            .AnyAsync(x =>
+                x.Id != capacityRuleId &&
+                x.ServiceBranchId == branchId &&
+                x.DayOfWeek == request.DayOfWeek &&
+                x.StartTime == request.StartTime &&
+                x.EndTime == request.EndTime,
+                cancellationToken);
+
+        if (duplicateExists)
+        {
+            return new ApiResponse<BranchCapacityRuleResponse>
+            {
+                Success = false,
+                Message = "A branch capacity rule with the same schedule already exists."
+            };
+        }
+
+        rule.DayOfWeek = request.DayOfWeek;
+        rule.StartTime = request.StartTime;
+        rule.EndTime = request.EndTime;
+        rule.Capacity = request.Capacity;
+        rule.IsActive = request.IsActive;
+        rule.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new ApiResponse<BranchCapacityRuleResponse>
+        {
+            Success = true,
+            Message = "Branch capacity rule updated successfully.",
+            Data = ToBranchCapacityRuleResponse(rule)
+        };
+    }
+
+    public async Task<ApiResponse<string>> DeleteCapacityRuleAsync(
+    int branchId,
+    int capacityRuleId,
+    CancellationToken cancellationToken = default)
+    {
+        var rule = await _context.BranchCapacityRules
+            .FirstOrDefaultAsync(x =>
+                x.Id == capacityRuleId &&
+                x.ServiceBranchId == branchId,
+                cancellationToken);
+
+        if (rule is null)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Branch capacity rule was not found."
+            };
+        }
+
+        _context.BranchCapacityRules.Remove(rule);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new ApiResponse<string>
+        {
+            Success = true,
+            Message = "Branch capacity rule deleted successfully.",
+            Data = "Deleted"
+        };
+    }
+
+    public async Task<int> GetCapacityForSlotAsync(
+    int branchId,
+    DateTime slotStart,
+    DateTime slotEnd,
+    CancellationToken cancellationToken = default)
+    {
+        var rules = await _context.BranchCapacityRules
+            .AsNoTracking()
+            .Where(x =>
+                x.ServiceBranchId == branchId &&
+                x.IsActive)
+            .ToListAsync(cancellationToken);
+
+        if (rules.Count == 0)
+        {
+            return 1;
+        }
+
+        var slotStartTime = slotStart.TimeOfDay;
+        var slotEndTime = slotEnd.TimeOfDay;
+
+        var exactTimeRule = rules
+            .Where(x =>
+                x.DayOfWeek == slotStart.DayOfWeek &&
+                x.StartTime.HasValue &&
+                x.EndTime.HasValue &&
+                slotStartTime >= x.StartTime.Value &&
+                slotEndTime <= x.EndTime.Value)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefault();
+
+        if (exactTimeRule is not null)
+        {
+            return exactTimeRule.Capacity;
+        }
+
+        var dayRule = rules
+            .Where(x =>
+                x.DayOfWeek == slotStart.DayOfWeek &&
+                !x.StartTime.HasValue &&
+                !x.EndTime.HasValue)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefault();
+
+        if (dayRule is not null)
+        {
+            return dayRule.Capacity;
+        }
+
+        var defaultRule = rules
+            .Where(x =>
+                !x.DayOfWeek.HasValue &&
+                !x.StartTime.HasValue &&
+                !x.EndTime.HasValue)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefault();
+
+        return defaultRule?.Capacity ?? 1;
+    }
+
+    private static ApiResponse<string> ValidateCapacityRuleInput(
+    DayOfWeek? dayOfWeek,
+    TimeSpan? startTime,
+    TimeSpan? endTime,
+    int capacity)
+    {
+        if (capacity <= 0)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Capacity must be greater than zero."
+            };
+        }
+
+        if (startTime.HasValue != endTime.HasValue)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "StartTime and EndTime must be provided together."
+            };
+        }
+
+        if (startTime.HasValue && !dayOfWeek.HasValue)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "DayOfWeek is required when StartTime and EndTime are provided."
+            };
+        }
+
+        if (startTime.HasValue && startTime.Value >= endTime!.Value)
+        {
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "StartTime must be before EndTime."
+            };
+        }
+
+        return new ApiResponse<string>
+        {
+            Success = true,
+            Message = "Valid"
+        };
+    }
+
+    private static BranchCapacityRuleResponse ToBranchCapacityRuleResponse(
+    BranchCapacityRule rule)
+    {
+        return new BranchCapacityRuleResponse
+        {
+            Id = rule.Id,
+            ServiceBranchId = rule.ServiceBranchId,
+            BranchName = rule.ServiceBranch.Name,
+            DayOfWeek = rule.DayOfWeek,
+            StartTime = rule.StartTime,
+            EndTime = rule.EndTime,
+            Capacity = rule.Capacity,
+            IsActive = rule.IsActive,
+            CreatedAt = rule.CreatedAt,
+            UpdatedAt = rule.UpdatedAt
+        };
+    }
+
     private static ApiResponse<string> ValidateClosureInput(
     DateTime startDate,
     DateTime endDate,

@@ -305,4 +305,109 @@ public class AdminServiceBranchesController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("{id:int}/capacity-rules")]
+    public async Task<IActionResult> GetCapacityRules(
+    int id,
+    [FromQuery] BranchCapacityRuleFilterRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.GetCapacityRulesAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpGet("{id:int}/capacity-rules/{capacityRuleId:int}")]
+    public async Task<IActionResult> GetCapacityRuleById(
+    int id,
+    int capacityRuleId,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.GetCapacityRuleByIdAsync(
+            id,
+            capacityRuleId,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPost("{id:int}/capacity-rules")]
+    public async Task<IActionResult> CreateCapacityRule(
+    int id,
+    [FromBody] CreateBranchCapacityRuleRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.CreateCapacityRuleAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return CreatedAtAction(
+            nameof(GetCapacityRuleById),
+            new { id, capacityRuleId = response.Data!.Id, version = "1.0" },
+            response);
+    }
+
+    [HttpPut("{id:int}/capacity-rules/{capacityRuleId:int}")]
+    public async Task<IActionResult> UpdateCapacityRule(
+    int id,
+    int capacityRuleId,
+    [FromBody] UpdateBranchCapacityRuleRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.UpdateCapacityRuleAsync(
+            id,
+            capacityRuleId,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            if (response.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(response);
+            }
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpDelete("{id:int}/capacity-rules/{capacityRuleId:int}")]
+    public async Task<IActionResult> DeleteCapacityRule(
+    int id,
+    int capacityRuleId,
+    CancellationToken cancellationToken)
+    {
+        var response = await _serviceBranchService.DeleteCapacityRuleAsync(
+            id,
+            capacityRuleId,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
+    }
 }

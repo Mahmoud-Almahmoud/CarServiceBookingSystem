@@ -14,6 +14,7 @@ public class BookingAvailabilityService : IBookingAvailabilityService
 {
     private readonly ApplicationDbContext _context;
     private readonly BookingAvailabilityOptions _options;
+    private readonly IServiceBranchService _serviceBranchService;
 
     private static readonly BookingStatus[] BlockingBookingStatuses =
     [
@@ -23,10 +24,12 @@ public class BookingAvailabilityService : IBookingAvailabilityService
 
     public BookingAvailabilityService(
         ApplicationDbContext context,
-        IOptions<BookingAvailabilityOptions> options)
+        IOptions<BookingAvailabilityOptions> options,
+        IServiceBranchService serviceBranchService)
     {
         _context = context;
         _options = options.Value;
+        _serviceBranchService = serviceBranchService;
     }
 
     public async Task<ApiResponse<List<AvailableSlotResponse>>> GetAvailableSlotsAsync(
@@ -152,18 +155,24 @@ public class BookingAvailabilityService : IBookingAvailabilityService
 
             var isAfterMinimumNotice = slotStart >= minimumAllowedStartTime;
 
-            var hasBookingConflict = existingBookings.Any(existing =>
+            var overlappingBookingsCount = existingBookings.Count(existing =>
                 slotStart < existing.EndDate &&
                 slotEnd > existing.StartDate);
+
+            var capacity = await _serviceBranchService.GetCapacityForSlotAsync(
+                request.ServiceBranchId,
+                slotStart,
+                slotEnd,
+                cancellationToken);
 
             var hasClosureConflict = HasPartialClosureConflict(
                 closures,
                 slotStart,
                 slotEnd);
 
-            var hasConflict = hasBookingConflict || hasClosureConflict;
+            var hasCapacity = overlappingBookingsCount < capacity;
 
-            if (isAfterMinimumNotice && !hasConflict)
+            if (isAfterMinimumNotice && !hasClosureConflict && hasCapacity)
             {
                 availableSlots.Add(new AvailableSlotResponse
                 {
@@ -254,9 +263,15 @@ public class BookingAvailabilityService : IBookingAvailabilityService
             query = query.Where(x => x.Id != excludedBookingId.Value);
         }
 
-        var hasConflict = await query.AnyAsync(cancellationToken);
+        var overlappingBookingsCount = await query.CountAsync(cancellationToken);
 
-        return !hasConflict;
+        var capacity = await _serviceBranchService.GetCapacityForSlotAsync(
+            serviceBranchId,
+            startDate,
+            endDate,
+            cancellationToken);
+
+        return overlappingBookingsCount < capacity;
     }
 
     private async Task<List<BranchClosure>> GetClosuresForDateAsync(

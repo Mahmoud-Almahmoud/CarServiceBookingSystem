@@ -85,4 +85,36 @@ public interface IServiceBranchService
         int branchId,
         int closureId,
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<PagedResponse<BranchCapacityRuleResponse>>> GetCapacityRulesAsync(
+    int branchId,
+    BranchCapacityRuleFilterRequest request,
+    CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchCapacityRuleResponse>> GetCapacityRuleByIdAsync(
+        int branchId,
+        int capacityRuleId,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchCapacityRuleResponse>> CreateCapacityRuleAsync(
+        int branchId,
+        CreateBranchCapacityRuleRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BranchCapacityRuleResponse>> UpdateCapacityRuleAsync(
+        int branchId,
+        int capacityRuleId,
+        UpdateBranchCapacityRuleRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<string>> DeleteCapacityRuleAsync(
+        int branchId,
+        int capacityRuleId,
+        CancellationToken cancellationToken = default);
+
+    Task<int> GetCapacityForSlotAsync(
+        int branchId,
+        DateTime slotStart,
+        DateTime slotEnd,
+        CancellationToken cancellationToken = default);
 }
