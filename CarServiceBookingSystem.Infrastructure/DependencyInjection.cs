@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Stripe;
 using System.Text;
 
 namespace CarServiceBookingSystem.Infrastructure;
@@ -44,10 +45,11 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
         services.Configure<BookingQuoteOptions>(configuration.GetSection("BookingQuote"));
         services.Configure<BookingAvailabilityOptions>(configuration.GetSection("BookingAvailability"));
+        services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
+        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 
-        var jwtSettings = configuration
-            .GetSection("JwtSettings")
-            .Get<JwtSettings>();
+        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
+        var stripSettings = configuration.GetSection("StripeSettings").Get<StripeSettings>();
 
         services.AddAuthentication(options =>
         {
@@ -71,20 +73,19 @@ public static class DependencyInjection
             };
         });
 
-        services.AddMemoryCache();
-        
+        StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
 
-        services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IAuthService, AuthService>();
+        services.AddMemoryCache();
         services.AddHttpContextAccessor();
+
+        services.AddScoped<ITokenService, Authentication.TokenService>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ICarService, CarService>();
         services.AddScoped<ICarLookupService, CarLookupService>();
         services.AddScoped<IServiceService, ServiceService>();
         services.AddScoped<IBookingService, BookingService>();
-        services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
-        services.AddScoped<IPaymentService, StripePaymentService>();
-        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IBackgroundJobService, HangfireBackgroundJobService>();
         services.AddScoped<ISecurityAuditService, SecurityAuditService>();
@@ -107,6 +108,8 @@ public static class DependencyInjection
         services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
         services.AddScoped<IServicePricingService, ServicePricingService>();
         services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
+        services.AddScoped<IServiceAreaService, ServiceAreaService>();
+        services.AddScoped<PaymentIntentService>();
 
         return services;
     }

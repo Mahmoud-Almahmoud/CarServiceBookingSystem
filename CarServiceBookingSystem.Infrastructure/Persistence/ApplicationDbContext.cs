@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<IdempotencyKey> IdempotencyKeys { get; set; }
     public DbSet<StripeWebhookEvent> StripeWebhookEvents { get; set; }
+    public DbSet<ServiceAreaRule> ServiceAreaRules => Set<ServiceAreaRule>();
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -82,6 +83,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TrustedDevice>().HasQueryFilter(x => !x.IsDeleted);
 
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        builder.Entity<ServiceAreaRule>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.CountryCode)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entity.Property(x => x.City)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.IsAllowed)
+                .IsRequired();
+
+            entity.Property(x => x.Priority)
+                .IsRequired();
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.Service)
+                .WithMany()
+                .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceId,
+                x.CountryCode,
+                x.City,
+                x.IsActive
+            });
+
+            entity.HasIndex(x => x.Priority);
+        });
         builder.Entity<StripeWebhookEvent>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -138,6 +174,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(x => x.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<Booking>()
+            .HasOne(x => x.Payment)
+           .WithOne(x => x.Booking)
+           .HasForeignKey<Payment>(x => x.BookingId)
+           .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Booking>(entity =>
+        {
+            entity.Property(x => x.ServicePrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.TravelFee)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.TotalPrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.CustomerLatitude)
+                .HasPrecision(10, 7);
+
+            entity.Property(x => x.CustomerLongitude)
+                .HasPrecision(10, 7);
+
+            entity.Property(x => x.CustomerCountryCode)
+                .HasMaxLength(10);
+
+            entity.Property(x => x.CustomerCity)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.DistanceKm)
+                .HasPrecision(10, 2);
+        });
+           
+
+
         builder.Entity<ServicePriceRule>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -185,18 +256,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             });
         });
 
-        builder.Entity<Booking>()
-            .HasOne(x => x.Payment)
-            .WithOne(x => x.Booking)
-            .HasForeignKey<Payment>(x => x.BookingId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.Entity<Service>()
             .Property(x => x.Price)
             .HasColumnType("decimal(18,2)");
 
-        builder.Entity<Payment>()
-            .Property(x => x.Amount)
-            .HasColumnType("decimal(18,2)");
+        builder.Entity<Payment>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.Currency)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entity.Property(x => x.PaymentIntentId)
+                .HasMaxLength(200);
+
+            entity.Property(x => x.StripeClientSecret)
+                .HasMaxLength(500);
+
+            entity.Property(x => x.FailureReason)
+                .HasMaxLength(1000);
+
+            entity.HasOne(x => x.Booking)
+                .WithOne(x => x.Payment)
+                .HasForeignKey<Payment>(x => x.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.BookingId)
+                 .IsUnique();
+
+            entity.HasIndex(x => x.PaymentIntentId)
+                .IsUnique()
+                .HasFilter("[PaymentIntentId] IS NOT NULL");
+        });
     }
 }

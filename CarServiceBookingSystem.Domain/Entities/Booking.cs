@@ -22,6 +22,28 @@ namespace CarServiceBookingSystem.Domain.Entities
 
         public BookingStatus Status { get; set; }
 
-        public Payment Payment { get; set; }
+        public decimal ServicePrice { get; set; }
+
+        public decimal TravelFee { get; set; }
+
+        public decimal TotalPrice { get; set; }
+
+        public decimal? CustomerLatitude { get; set; }
+
+        public decimal? CustomerLongitude { get; set; }
+
+        public string? CustomerCountryCode { get; set; }
+
+        public string? CustomerCity { get; set; }
+
+        public double? DistanceKm { get; set; }
+
+        public int? EstimatedTravelTimeMinutes { get; set; }
+
+        public int? ServicePriceRuleId { get; set; }
+
+        public int? ServiceAreaRuleId { get; set; }
+
+        public Payment? Payment { get; set; }
     }
 }

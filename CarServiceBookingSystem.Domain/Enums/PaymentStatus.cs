@@ -8,6 +8,8 @@ namespace CarServiceBookingSystem.Domain.Enums
     {
         Pending = 1,
         Succeeded = 2,
-        Failed = 3
+        Failed = 3,
+        Cancelled = 4,
+        Refunded = 5
     }
 }

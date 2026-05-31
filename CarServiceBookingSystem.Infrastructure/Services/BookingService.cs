@@ -5,6 +5,7 @@ using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using static CarServiceBookingSystem.Application.Security.Permissions;
 
 namespace CarServiceBookingSystem.Infrastructure.Services;
 
@@ -15,59 +16,63 @@ public class BookingService : IBookingService
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly IEmailService _emailService;
     private readonly IBookingAvailabilityService _bookingAvailabilityService;
+    private readonly IBookingQuoteService _bookingQuoteService;
 
     public BookingService(
         ApplicationDbContext context,
         ICurrentUserService currentUserService, 
         IBackgroundJobService backgroundJobService, 
         IEmailService emailService, 
-        IBookingAvailabilityService bookingAvailabilityService)
+        IBookingAvailabilityService bookingAvailabilityService,
+        IBookingQuoteService bookingQuoteService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _backgroundJobService = backgroundJobService;
         _emailService = emailService;
         _bookingAvailabilityService = bookingAvailabilityService;
-    }               
-
-    public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request, CancellationToken cancellationToken = default)
+        _bookingQuoteService = bookingQuoteService;
+    }
+    
+    public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request,CancellationToken cancellationToken = default)
     {
-       
         var userId = _currentUserService.UserId;
 
         if (string.IsNullOrWhiteSpace(userId))
             return ApiResponse<BookingResponse>.Fail("User is not authenticated");
 
-        var car = await _context.Cars
-            .FirstOrDefaultAsync(x => x.Id == request.CarId && x.UserId == userId);
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        if (car == null)
-            return ApiResponse<BookingResponse>.Fail("Car not found");
+        var quoteResponse = await _bookingQuoteService.GetQuoteAsync(
+            new BookingQuoteRequest
+            {
+                CarId = request.CarId,
+                ServiceId = request.ServiceId,
+                LocationType = request.LocationType,
+                StartDate = request.StartDate,
+                CustomerLatitude = request.CustomerLatitude,
+                CustomerLongitude = request.CustomerLongitude,
+                CustomerCountryCode = request.CustomerCountryCode,
+                CustomerCity = request.CustomerCity
+            },cancellationToken);
 
-        var service = await _context.Services
-            .FirstOrDefaultAsync(x => x.Id == request.ServiceId);
-
-        if (service == null)
-            return ApiResponse<BookingResponse>.Fail("Service not found");
-
-        if (request.StartDate <= DateTime.UtcNow)
-            return ApiResponse<BookingResponse>.Fail("Start date must be in the future");
-
-        var endDate = request.StartDate.AddMinutes(service.DurationInMinutes);
-
-        var isSlotAvailable = await _bookingAvailabilityService.IsSlotAvailableAsync(
-            request.StartDate,
-            endDate,
-            request.LocationType,
-            excludedBookingId: null,
-            cancellationToken);
-
-        if (!isSlotAvailable)
+        if (!quoteResponse.Success || quoteResponse.Data is null)
         {
             return new ApiResponse<BookingResponse>
             {
                 Success = false,
-                Message = "Selected time slot is not available."
+                Message = quoteResponse.Message
+            };
+        }
+
+        var quote = quoteResponse.Data;
+
+        if (!quote.IsAvailable)
+        {
+            return new ApiResponse<BookingResponse>
+            {
+                Success = false,
+                Message = quote.UnavailableReason ?? "Selected booking option is not available."
             };
         }
 
@@ -77,17 +82,49 @@ public class BookingService : IBookingService
             CarId = request.CarId,
             ServiceId = request.ServiceId,
             LocationType = request.LocationType,
-            StartDate = request.StartDate,
-            EndDate = request.StartDate.AddMinutes(service.DurationInMinutes),
-            Status = BookingStatus.Pending
+
+            StartDate = quote.StartDate,
+            EndDate = quote.EndDate,
+            Status = BookingStatus.Pending,
+
+            ServicePrice = quote.ServicePrice,
+            TravelFee = quote.TravelFee,
+            TotalPrice = quote.TotalPrice,
+
+            CustomerLatitude = quote.CustomerLatitude,
+            CustomerLongitude = quote.CustomerLongitude,
+            CustomerCountryCode = quote.CustomerCountryCode,
+            CustomerCity = quote.CustomerCity,
+
+            DistanceKm = quote.DistanceKm.HasValue
+                ? quote.DistanceKm.Value
+                : null,
+
+            EstimatedTravelTimeMinutes = quote.EstimatedTravelTimeMinutes,
+
+            ServicePriceRuleId = quote.ServicePriceRuleId,
+            ServiceAreaRuleId = quote.MatchedServiceAreaRuleId,
+
+            CreatedAt = DateTime.UtcNow
         };
 
-        await _context.Bookings.AddAsync(booking);
-        await _context.SaveChangesAsync();
+        await _context.Bookings.AddAsync(booking, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
 
-        var response = await BuildBookingResponseAsync(booking.Id);
+        await transaction.CommitAsync(cancellationToken);
 
-        return ApiResponse<BookingResponse>.Ok(response!, "Booking created successfully");
+        var createdBooking = await _context.Bookings
+            .AsNoTracking()
+            .Include(x => x.Service)
+            .Include(x=>x.Car)
+            .FirstAsync(x => x.Id == booking.Id, cancellationToken);
+
+        return new ApiResponse<BookingResponse>
+        {
+            Success = true,
+            Message = "Booking created successfully.",
+            Data = ToResponse(createdBooking)
+        };
     }
 
     public async Task<ApiResponse<List<BookingResponse>>> GetMyBookingsAsync()
@@ -99,6 +136,8 @@ public class BookingService : IBookingService
 
         var bookings = await GetBookingQuery()
             .Where(x => x.UserId == userId)
+            .Include(x => x.Service)
+            .Include(x => x.Car)
             .OrderByDescending(x => x.StartDate)
             .Select(x => ToResponse(x))
             .ToListAsync();
@@ -147,6 +186,8 @@ public class BookingService : IBookingService
         var items = await query
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
+            .Include(x => x.Service)
+            .Include(x => x.Car)
             .Select(x => ToResponse(x))
             .ToListAsync();
 
@@ -215,6 +256,8 @@ public class BookingService : IBookingService
     {
         return await GetBookingQuery()
             .Where(x => x.Id == bookingId)
+            .Include(x => x.Service)
+            .Include(x => x.Car)
             .Select(x => ToResponse(x))
             .FirstOrDefaultAsync();
     }
@@ -227,12 +270,26 @@ public class BookingService : IBookingService
             CarId = booking.CarId,
             PlateNumber = booking.Car.PlateNumber,
             ServiceId = booking.ServiceId,
-            ServiceName = booking.Service.Name,
-            ServicePrice = booking.Service.Price,
+            ServiceName = booking.Service?.Name ?? string.Empty,
             LocationType = booking.LocationType,
             StartDate = booking.StartDate,
             EndDate = booking.EndDate,
-            Status = booking.Status
+            Status = booking.Status,
+
+            ServicePrice = booking.ServicePrice,
+            TravelFee = booking.TravelFee,
+            TotalPrice = booking.TotalPrice,
+
+            CustomerLatitude = booking.CustomerLatitude,
+            CustomerLongitude = booking.CustomerLongitude,
+            CustomerCountryCode = booking.CustomerCountryCode,
+            CustomerCity = booking.CustomerCity,
+
+            DistanceKm = booking.DistanceKm,
+            EstimatedTravelTimeMinutes = booking.EstimatedTravelTimeMinutes,
+
+            ServicePriceRuleId = booking.ServicePriceRuleId,
+            ServiceAreaRuleId = booking.ServiceAreaRuleId,
         };
     }
 }

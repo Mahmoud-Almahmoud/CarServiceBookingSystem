@@ -26,13 +26,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var service = new Service
         {
@@ -86,13 +88,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var request = new CreateBookingRequest
         {
@@ -119,13 +123,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var car = new Car
         {
@@ -161,13 +167,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var service = new Service
         {
@@ -211,13 +219,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var service = new Service
         {
@@ -276,13 +286,15 @@ public class BookingServiceTests
         var emailServiceMock = new Mock<IEmailService>();
         var backgroundJobMock = new Mock<IBackgroundJobService>();
         var bookingAvailabilityServiceMock = new Mock<IBookingAvailabilityService>();
+        var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
 
         var bookingService = new BookingService(
             context,
             currentUserMock.Object,
             backgroundJobMock.Object,
             emailServiceMock.Object,
-            bookingAvailabilityServiceMock.Object);
+            bookingAvailabilityServiceMock.Object,
+            bookingQuoteServiceMock.Object);
 
         var user = new ApplicationUser
         {

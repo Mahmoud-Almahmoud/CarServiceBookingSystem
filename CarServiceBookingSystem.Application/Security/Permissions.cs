@@ -20,6 +20,13 @@ public static class Permissions
         public const string Manage = "Bookings.Manage";
     }
 
+    public static class Payments
+    {
+        public const string View = "Payments.View";
+        public const string Create = "Payments.Create";
+        public const string Manage = "Payments.Manage";
+    }
+
     public static class Cars
     {
         public const string ViewMine = "Cars.ViewMine";

@@ -5,8 +5,5 @@ namespace CarServiceBookingSystem.Application.Interfaces;
 
 public interface IBookingQuoteService
 {
-    Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(
-        BookingQuoteRequest request,
-        string userId,
-        CancellationToken cancellationToken = default);
+    Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(BookingQuoteRequest request,CancellationToken cancellationToken = default);
 }
