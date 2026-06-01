@@ -84,4 +84,10 @@ public static class Permissions
     {
         public const string View = "BackgroundJobs.View";
     }
+
+    public static class Technicians
+    {
+        public const string View = "Technicians.View";
+        public const string Manage = "Technicians.Manage";
+    }
 }

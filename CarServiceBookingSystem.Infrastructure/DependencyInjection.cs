@@ -152,6 +152,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceAreaService, ServiceAreaService>();
         services.AddScoped<PaymentIntentService>();
         services.AddScoped<IServiceBranchService, ServiceBranchService>();
+        services.AddScoped<ITechnicianService, TechnicianManagementService>();
 
         return services;
     }
