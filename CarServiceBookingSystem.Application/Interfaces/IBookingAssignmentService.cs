@@ -9,4 +9,8 @@ public interface IBookingAssignmentService
         int bookingId,
         AssignTechnicianRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<BookingTechnicianAssignmentResponse>> AutoAssignTechnicianAsync(
+        int bookingId,
+        CancellationToken cancellationToken = default);
 }

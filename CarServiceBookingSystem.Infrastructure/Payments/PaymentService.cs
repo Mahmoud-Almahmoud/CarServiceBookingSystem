@@ -4,10 +4,12 @@ using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
+using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
+using static CarServiceBookingSystem.Application.Security.Permissions;
 using StripeEvent = Stripe.Event;
 
 namespace CarServiceBookingSystem.Infrastructure.Payments;
@@ -24,6 +26,7 @@ public class PaymentService : IPaymentService
     private readonly PaymentIntentService _paymentIntentService;
     private readonly StripeSettings _stripeSettings;
     private readonly ILogger<PaymentService> _logger;
+    private readonly IBookingAssignmentService _bookingAssignmentService;
     private readonly string _currency;
 
     public PaymentService(
@@ -32,7 +35,8 @@ public class PaymentService : IPaymentService
         IOptions<StripeSettings> options,
         IIdempotencyContext idempotencyContext,
         PaymentIntentService paymentIntentService,
-        ILogger<PaymentService> logger)
+        ILogger<PaymentService> logger,
+        IBookingAssignmentService bookingAssignmentService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -41,6 +45,7 @@ public class PaymentService : IPaymentService
         _currency = options.Value.Currency ?? "aed";
         _stripeSettings = options.Value;
         _logger = logger;
+        _bookingAssignmentService = bookingAssignmentService;
     }
 
     public async Task<ApiResponse<PaymentIntentResponse>> CreatePaymentIntentAsync(CreatePaymentIntentRequest request,
@@ -571,6 +576,8 @@ public class PaymentService : IPaymentService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _bookingAssignmentService.AutoAssignTechnicianAsync(payment.Booking.Id, cancellationToken);
     }
 
     private async Task HandlePaymentIntentFailedAsync(

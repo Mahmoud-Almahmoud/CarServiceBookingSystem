@@ -135,6 +135,148 @@ public class BookingAssignmentService : IBookingAssignmentService
         return ApiResponse<BookingTechnicianAssignmentResponse>.Ok(response);
     }
 
+    public async Task<ApiResponse<BookingTechnicianAssignmentResponse>> AutoAssignTechnicianAsync(
+    int bookingId,
+    CancellationToken cancellationToken = default)
+    {
+        var booking = await _context.Bookings
+            .Include(x => x.Service)
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.Technician)
+            .FirstOrDefaultAsync(x => x.Id == bookingId, cancellationToken);
+
+        if (booking is null)
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("Booking not found.");
+        }
+
+        if (booking.ServiceBranchId is null)
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("Booking does not have a selected service branch.");
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("Cancelled bookings cannot be assigned to technicians.");
+        }
+
+        if (booking.Status == BookingStatus.Completed)
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("Completed bookings cannot be assigned to technicians.");
+        }
+
+        if (booking.TechnicianId.HasValue)
+        {
+            var assignedTechnician = await _context.Technicians
+                .AsNoTracking()
+                .Include(x => x.ServiceBranch)
+                .FirstOrDefaultAsync(x => x.Id == booking.TechnicianId.Value, cancellationToken);
+
+            if (assignedTechnician is null)
+            {
+                return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("Booking has an assigned technician, but the technician was not found.");
+            }
+
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Ok(
+                CreateAssignmentResponse(booking, assignedTechnician),
+                "Booking already has an assigned technician.");
+        }
+
+        var candidates = await _context.Technicians
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.TechnicianServices)
+            .Include(x => x.WorkingHours)
+            .Include(x => x.UnavailableDates)
+            .Where(x =>
+                x.IsActive &&
+                x.ServiceBranchId == booking.ServiceBranchId.Value &&
+                x.TechnicianServices.Any(s => s.ServiceId == booking.ServiceId))
+            .ToListAsync(cancellationToken);
+
+        if (!candidates.Any())
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("No active technician supports this service at the selected branch.");
+        }
+
+        var availableTechnicians = new List<TechnicianWorkloadCandidate>();
+
+        foreach (var technician in candidates)
+        {
+            var isWorking = IsTechnicianWorking(
+                technician.WorkingHours,
+                booking.StartDate,
+                booking.EndDate);
+
+            if (!isWorking)
+            {
+                continue;
+            }
+
+            var isUnavailable = IsTechnicianUnavailable(
+                technician.UnavailableDates,
+                booking.StartDate,
+                booking.EndDate);
+
+            if (isUnavailable)
+            {
+                continue;
+            }
+
+            var hasOverlappingBooking = await _context.Bookings
+                .AsNoTracking()
+                .AnyAsync(x =>
+                    x.Id != booking.Id &&
+                    x.TechnicianId == technician.Id &&
+                    x.Status != BookingStatus.Cancelled &&
+                    x.Status != BookingStatus.Completed &&
+                    x.StartDate < booking.EndDate &&
+                    x.EndDate > booking.StartDate,
+                    cancellationToken);
+
+            if (hasOverlappingBooking)
+            {
+                continue;
+            }
+
+            var sameDayWorkload = await _context.Bookings
+                .AsNoTracking()
+                .CountAsync(x =>
+                    x.TechnicianId == technician.Id &&
+                    x.Status != BookingStatus.Cancelled &&
+                    x.Status != BookingStatus.Completed &&
+                    x.StartDate.Date == booking.StartDate.Date,
+                    cancellationToken);
+
+            availableTechnicians.Add(new TechnicianWorkloadCandidate
+            {
+                Technician = technician,
+                SameDayWorkload = sameDayWorkload
+            });
+        }
+
+        var selectedCandidate = availableTechnicians
+            .OrderBy(x => x.SameDayWorkload)
+            .ThenBy(x => x.Technician.Id)
+            .FirstOrDefault();
+
+        if (selectedCandidate is null)
+        {
+            return ApiResponse<BookingTechnicianAssignmentResponse>.Fail("No available technician found for this booking slot.");
+        }
+
+        booking.TechnicianId = selectedCandidate.Technician.Id;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var response = CreateAssignmentResponse(booking, selectedCandidate.Technician);
+
+        return ApiResponse<BookingTechnicianAssignmentResponse>.Ok(
+            response,
+            "Technician auto-assigned successfully.");
+    }
+
     private static bool IsTechnicianWorking(
         IEnumerable<Domain.Entities.TechnicianWorkingHour> workingHours,
         DateTime slotStart,
@@ -201,5 +343,30 @@ public class BookingAssignmentService : IBookingAssignmentService
                 return x.StartTime < slotEndTime &&
                        x.EndTime > slotStartTime;
             });
+    }
+
+    private static BookingTechnicianAssignmentResponse CreateAssignmentResponse(
+    Domain.Entities.Booking booking,
+    Domain.Entities.Technician technician)
+    {
+        return new BookingTechnicianAssignmentResponse
+        {
+            BookingId = booking.Id,
+            TechnicianId = technician.Id,
+            TechnicianName = technician.FullName,
+            ServiceBranchId = booking.ServiceBranchId!.Value,
+            ServiceBranchName = booking.ServiceBranch?.Name ?? technician.ServiceBranch?.Name ?? string.Empty,
+            ServiceId = booking.ServiceId,
+            ServiceName = booking.Service?.Name ?? string.Empty,
+            StartDate = booking.StartDate,
+            EndDate = booking.EndDate,
+            BookingStatus = booking.Status.ToString()
+        };
+    }
+
+    private sealed class TechnicianWorkloadCandidate
+    {
+        public Domain.Entities.Technician Technician { get; set; } = null!;
+        public int SameDayWorkload { get; set; }
     }
 }

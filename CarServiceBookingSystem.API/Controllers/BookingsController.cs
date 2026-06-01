@@ -128,4 +128,21 @@ public class BookingsController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPut("{id:int}/auto-assign-technician")]
+    public async Task<IActionResult> AutoAssignTechnician(
+    int id,
+    CancellationToken cancellationToken)
+    {
+        var response = await _bookingAssignmentService.AutoAssignTechnicianAsync(
+            id,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }
