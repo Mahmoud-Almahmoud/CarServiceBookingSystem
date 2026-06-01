@@ -4,9 +4,9 @@ using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Enums;
+using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
@@ -19,14 +19,17 @@ public class BookingsController : ControllerBase
     private readonly IBookingService _bookingService;
     private readonly IBookingQuoteService _bookingQuoteService;
     private readonly IBookingAvailabilityService _bookingAvailabilityService;
+    private readonly IBookingAssignmentService _bookingAssignmentService;
 
     public BookingsController(IBookingService bookingService, 
         IBookingQuoteService bookingQuoteService, 
-        IBookingAvailabilityService bookingAvailabilityService)
+        IBookingAvailabilityService bookingAvailabilityService,
+        IBookingAssignmentService bookingAssignmentService)
     {
         _bookingService = bookingService;
         _bookingQuoteService = bookingQuoteService;
         _bookingAvailabilityService = bookingAvailabilityService;
+        _bookingAssignmentService = bookingAssignmentService;
     }
 
     [HttpPost]
@@ -96,6 +99,25 @@ public class BookingsController : ControllerBase
        CancellationToken cancellationToken)
     {
         var response = await _bookingAvailabilityService.GetAvailableSlotsAsync(
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("{id:int}/assign-technician")]
+    public async Task<IActionResult> AssignTechnician(
+    int id,
+    [FromBody] AssignTechnicianRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _bookingAssignmentService.AssignTechnicianAsync(
+            id,
             request,
             cancellationToken);
 
