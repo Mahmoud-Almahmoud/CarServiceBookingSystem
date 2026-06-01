@@ -191,6 +191,7 @@ public class BookingService : IBookingService
             .Take(request.PageSize)
             .Include(x => x.Service)
             .Include(x => x.Car)
+            .Include (x => x.Technician)
             .Select(x => ToResponse(x))
             .ToListAsync();
 
@@ -253,7 +254,8 @@ public class BookingService : IBookingService
             .AsNoTracking()
             .Include(x => x.Car)
             .Include(x => x.Service)
-            .Include(x => x.ServiceBranch);
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.Technician);
     }
 
     private async Task<BookingResponse?> BuildBookingResponseAsync(int bookingId)
@@ -273,6 +275,7 @@ public class BookingService : IBookingService
         {
             Id = booking.Id,
             CarId = booking.CarId,
+            UserId = booking.UserId,
             PlateNumber = booking.Car.PlateNumber,
             ServiceId = booking.ServiceId,
             ServiceBranchId = booking.ServiceBranchId,
@@ -283,6 +286,9 @@ public class BookingService : IBookingService
             EndDate = booking.EndDate,
             Status = booking.Status,
 
+            TechnicianId = booking.TechnicianId,
+            TechnicianName = booking.Technician?.FullName ?? string.Empty,
+
             ServicePrice = booking.ServicePrice,
             TravelFee = booking.TravelFee,
             TotalPrice = booking.TotalPrice,
@@ -291,12 +297,16 @@ public class BookingService : IBookingService
             CustomerLongitude = booking.CustomerLongitude,
             CustomerCountryCode = booking.CustomerCountryCode,
             CustomerCity = booking.CustomerCity,
+            CustomerFormattedAddress = booking.CustomerFormattedAddress,
 
             DistanceKm = booking.DistanceKm,
             EstimatedTravelTimeMinutes = booking.EstimatedTravelTimeMinutes,
 
             ServicePriceRuleId = booking.ServicePriceRuleId,
             ServiceAreaRuleId = booking.ServiceAreaRuleId,
+
+            CreatedAt = booking.CreatedAt,
+            UpdatedAt = booking.UpdatedAt
         };
     }
 }

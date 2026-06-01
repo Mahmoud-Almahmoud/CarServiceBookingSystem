@@ -115,6 +115,10 @@ public class BookingAssignmentService : IBookingAssignmentService
 
         booking.TechnicianId = technician.Id;
         booking.UpdatedAt = DateTime.UtcNow;
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            booking.Status = BookingStatus.Assigned;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -267,6 +271,10 @@ public class BookingAssignmentService : IBookingAssignmentService
 
         booking.TechnicianId = selectedCandidate.Technician.Id;
         booking.UpdatedAt = DateTime.UtcNow;
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            booking.Status = BookingStatus.Assigned;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 
