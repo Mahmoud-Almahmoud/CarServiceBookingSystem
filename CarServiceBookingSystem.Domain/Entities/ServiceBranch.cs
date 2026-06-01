@@ -20,5 +20,6 @@
         public ICollection<BranchWorkingHour> WorkingHours { get; set; } = new List<BranchWorkingHour>();
         public ICollection<BranchClosure> Closures { get; set; } = new List<BranchClosure>();
         public ICollection<BranchCapacityRule> CapacityRules { get; set; } = new List<BranchCapacityRule>();
+        public ICollection<Technician> Technicians { get; set; } = new List<Technician>();
     }
 }

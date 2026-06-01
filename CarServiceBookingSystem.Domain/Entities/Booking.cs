@@ -15,6 +15,9 @@ namespace CarServiceBookingSystem.Domain.Entities
         public int ServiceId { get; set; }
         public Service Service { get; set; }
 
+        public int? TechnicianId { get; set; }
+        public Technician? Technician { get; set; }
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 

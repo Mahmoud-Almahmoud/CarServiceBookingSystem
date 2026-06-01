@@ -40,6 +40,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<BranchService> BranchServices => Set<BranchService>();
     public DbSet<BranchClosure> BranchClosures => Set<BranchClosure>();
     public DbSet<BranchCapacityRule> BranchCapacityRules => Set<BranchCapacityRule>();
+    public DbSet<Technician> Technicians { get; set; }
+    public DbSet<TechnicianService> TechnicianServices { get; set; }
+    public DbSet<TechnicianWorkingHour> TechnicianWorkingHours { get; set; }
+    public DbSet<TechnicianUnavailableDate> TechnicianUnavailableDates { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
