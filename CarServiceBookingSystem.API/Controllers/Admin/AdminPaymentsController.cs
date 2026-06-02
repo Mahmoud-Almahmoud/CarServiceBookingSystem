@@ -2,6 +2,7 @@
 using CarServiceBookingSystem.Application.DTOs.Payments;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Security;
+using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,10 +15,12 @@ namespace CarServiceBookingSystem.API.Controllers.Admin;
 public class AdminPaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
+    private readonly IPaymentRefundService _paymentRefundService;
 
-    public AdminPaymentsController(IPaymentService paymentService)
+    public AdminPaymentsController(IPaymentService paymentService, IPaymentRefundService paymentRefundService)
     {
         _paymentService = paymentService;
+        _paymentRefundService = paymentRefundService;
     }
 
     [HttpGet]
@@ -45,6 +48,24 @@ public class AdminPaymentsController : ControllerBase
         {
             return NotFound(response);
         }
+
+        return Ok(response);
+    }
+
+
+    [HttpPost("{id:int}/refund")]
+    public async Task<IActionResult> RefundPayment(
+    int id,
+    [FromBody] RefundPaymentRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _paymentRefundService.RefundPaymentAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+            return BadRequest(response);
 
         return Ok(response);
     }

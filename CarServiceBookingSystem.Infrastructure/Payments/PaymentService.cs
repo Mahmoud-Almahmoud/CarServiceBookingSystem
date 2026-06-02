@@ -19,6 +19,10 @@ public class PaymentService : IPaymentService
     private const string PaymentIntentSucceeded = "payment_intent.succeeded";
     private const string PaymentIntentPaymentFailed = "payment_intent.payment_failed";
     private const string PaymentIntentCanceled = "payment_intent.canceled";
+    private const string RefundUpdated = "refund.updated";
+    private const string RefundFailed = "refund.failed";
+    private const string ChargeRefunded = "charge.refunded";
+    private const string RefundCreated = "refund.created";
 
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
@@ -323,6 +327,15 @@ public class PaymentService : IPaymentService
                     await HandlePaymentIntentCanceledAsync(
                         stripeEvent,
                         cancellationToken);
+                    break;
+
+                case RefundUpdated:
+                case RefundFailed:
+                    await HandleRefundEventAsync(stripeEvent, cancellationToken);
+                    break;
+
+                case ChargeRefunded:
+                    await HandleChargeRefundedAsync(stripeEvent, cancellationToken);
                     break;
 
                 default:
@@ -644,6 +657,166 @@ public class PaymentService : IPaymentService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task HandleRefundEventAsync(
+    Event stripeEvent,
+    CancellationToken cancellationToken)
+    {
+        var refund = stripeEvent.Data.Object as Refund;
+
+        if (refund is null)
+        {
+            return;
+        }
+
+        var payment = await FindPaymentForRefundAsync(refund, cancellationToken);
+
+        if (payment is null)
+        {
+            return;
+        }
+
+        payment.StripeRefundId = refund.Id;
+        payment.RefundedAmount = ConvertFromSmallestCurrencyUnit(refund.Amount, payment.Currency);
+        payment.RefundFailureReason = null;
+
+        switch (refund.Status)
+        {
+            case "succeeded":
+                payment.Status = PaymentStatus.Refunded;
+                payment.RefundedAt ??= DateTime.UtcNow;
+                break;
+
+            case "failed":
+                payment.Status = PaymentStatus.RefundFailed;
+                payment.RefundFailureReason = refund.FailureReason;
+                break;
+
+            case "pending":
+            case "requires_action":
+                payment.Status = PaymentStatus.RefundPending;
+                break;
+
+            case "canceled":
+                payment.Status = PaymentStatus.RefundFailed;
+                payment.RefundFailureReason = "Refund was canceled.";
+                break;
+
+            default:
+                payment.Status = PaymentStatus.RefundPending;
+                break;
+        }
+
+        payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task HandleChargeRefundedAsync(
+    Event stripeEvent,
+    CancellationToken cancellationToken)
+    {
+        var charge = stripeEvent.Data.Object as Charge;
+
+        if (charge is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(charge.PaymentIntentId))
+        {
+            return;
+        }
+
+        var payment = await _context.Payments
+            .Include(x => x.Booking)
+            .FirstOrDefaultAsync(x =>
+                x.PaymentIntentId == charge.PaymentIntentId,
+                cancellationToken);
+
+        if (payment is null)
+        {
+            return;
+        }
+
+        var refundedAmount = ConvertFromSmallestCurrencyUnit(
+            charge.AmountRefunded,
+            payment.Currency);
+
+        payment.RefundedAmount = refundedAmount;
+        payment.RefundFailureReason = null;
+
+        if (charge.Refunded || refundedAmount >= payment.Amount)
+        {
+            payment.Status = PaymentStatus.Refunded;
+            payment.RefundedAt ??= DateTime.UtcNow;
+        }
+        else if (refundedAmount > 0)
+        {
+            payment.Status = PaymentStatus.RefundPending;
+        }
+
+        payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<Payment?> FindPaymentForRefundAsync(
+    Refund refund,
+    CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(refund.PaymentIntentId))
+        {
+            var paymentByPaymentIntent = await _context.Payments
+                .Include(x => x.Booking)
+                .FirstOrDefaultAsync(x =>
+                    x.PaymentIntentId == refund.PaymentIntentId,
+                    cancellationToken);
+
+            if (paymentByPaymentIntent is not null)
+            {
+                return paymentByPaymentIntent;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(refund.Id))
+        {
+            var paymentByRefundId = await _context.Payments
+                .Include(x => x.Booking)
+                .FirstOrDefaultAsync(x =>
+                    x.StripeRefundId == refund.Id,
+                    cancellationToken);
+
+            if (paymentByRefundId is not null)
+            {
+                return paymentByRefundId;
+            }
+        }
+
+        if (refund.Metadata is not null &&
+            refund.Metadata.TryGetValue("paymentId", out var paymentIdValue) &&
+            int.TryParse(paymentIdValue, out var paymentId))
+        {
+            return await _context.Payments
+                .Include(x => x.Booking)
+                .FirstOrDefaultAsync(x =>
+                    x.Id == paymentId,
+                    cancellationToken);
+        }
+
+        if (refund.Metadata is not null &&
+            refund.Metadata.TryGetValue("bookingId", out var bookingIdValue) &&
+            int.TryParse(bookingIdValue, out var bookingId))
+        {
+            return await _context.Payments
+                .Include(x => x.Booking)
+                .FirstOrDefaultAsync(x =>
+                    x.BookingId == bookingId,
+                    cancellationToken);
+        }
+
+        return null;
+    }
+
     private IQueryable<Payment> BuildPaymentQuery(PaymentFilterRequest request)
     {
         var query = _context.Payments
@@ -810,5 +983,19 @@ public class PaymentService : IPaymentService
             CreatedAt = payment.CreatedAt,
             UpdatedAt = payment.UpdatedAt
         };
+    }
+
+    private static decimal ConvertFromSmallestCurrencyUnit(long amount, string currency)
+    {
+        var zeroDecimalCurrencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw",
+        "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf",
+        "xof", "xpf"
+    };
+
+        return zeroDecimalCurrencies.Contains(currency)
+            ? amount
+            : amount / 100m;
     }
 }

@@ -317,6 +317,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(x => x.PaymentIntentId)
                 .IsUnique()
                 .HasFilter("[PaymentIntentId] IS NOT NULL");
+
+            entity.Property(x => x.StripeRefundId)
+                .HasMaxLength(200);
+
+            entity.Property(x => x.RefundedAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.RefundFailureReason)
+                .HasMaxLength(500);
         });
 
         builder.Entity<ServiceBranch>(entity =>
