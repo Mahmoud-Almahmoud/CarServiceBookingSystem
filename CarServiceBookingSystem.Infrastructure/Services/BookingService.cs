@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.DTOs.Bookings;
+using CarServiceBookingSystem.Application.DTOs.Payments;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
@@ -16,6 +17,7 @@ public class BookingService : IBookingService
     private readonly IEmailService _emailService;
     private readonly IBookingAvailabilityService _bookingAvailabilityService;
     private readonly IBookingQuoteService _bookingQuoteService;
+    private readonly IPaymentRefundService _paymentRefundService;
 
     public BookingService(
         ApplicationDbContext context,
@@ -23,7 +25,8 @@ public class BookingService : IBookingService
         IBackgroundJobService backgroundJobService, 
         IEmailService emailService, 
         IBookingAvailabilityService bookingAvailabilityService,
-        IBookingQuoteService bookingQuoteService)
+        IBookingQuoteService bookingQuoteService,
+        IPaymentRefundService paymentRefundService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -31,6 +34,7 @@ public class BookingService : IBookingService
         _emailService = emailService;
         _bookingAvailabilityService = bookingAvailabilityService;
         _bookingQuoteService = bookingQuoteService;
+        _paymentRefundService = paymentRefundService;
     }
     
     public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request,CancellationToken cancellationToken = default)
@@ -314,6 +318,21 @@ public class BookingService : IBookingService
         var refundRequired =
             booking.Payment is not null &&
             booking.Payment.Status == PaymentStatus.Succeeded;
+
+        if (refundRequired)
+        {
+            await _paymentRefundService.RefundBookingPaymentAsync(
+                booking.Id,
+                new RefundPaymentRequest
+                {
+                    Reason = booking.CancellationReason
+                },
+                cancellationToken);
+        }
+
+        await _context.Entry(booking)
+            .Reference(x => x.Payment)
+            .LoadAsync(cancellationToken);
 
         var response = new BookingCancellationResponse
         {

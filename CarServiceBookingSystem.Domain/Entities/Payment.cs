@@ -19,5 +19,9 @@ namespace CarServiceBookingSystem.Domain.Entities
         public string? FailureReason { get; set; }
         public string? FailureCode { get; set; }
         public string? DeclineCode { get; set; }
+        public string? StripeRefundId { get; set; }
+        public decimal? RefundedAmount { get; set; }
+        public DateTime? RefundedAt { get; set; }
+        public string? RefundFailureReason { get; set; }
     }
 }
