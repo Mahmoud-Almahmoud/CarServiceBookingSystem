@@ -24,8 +24,12 @@ namespace CarServiceBookingSystem.Domain.Entities
         public ServiceLocationType LocationType { get; set; }
 
         public BookingStatus Status { get; set; }
-        public int? ServiceBranchId { get; set; }
 
+        public DateTime? CancelledAt { get; set; }
+        public string? CancelledByUserId { get; set; }
+        public string? CancellationReason { get; set; }
+
+        public int? ServiceBranchId { get; set; }
         public ServiceBranch? ServiceBranch { get; set; }
 
         public decimal ServicePrice { get; set; }
