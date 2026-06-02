@@ -225,6 +225,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(x => x.Bookings)
                 .HasForeignKey(x => x.ServiceBranchId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(x => x.CancellationReason)
+                .HasMaxLength(500);
+
+            entity.Property(x => x.CancelledByUserId)
+                .HasMaxLength(450);
         });
            
 

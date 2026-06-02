@@ -5,7 +5,6 @@ using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using static CarServiceBookingSystem.Application.Security.Permissions;
 
 namespace CarServiceBookingSystem.Infrastructure.Services;
 
@@ -246,6 +245,87 @@ public class BookingService : IBookingService
         var response = await BuildBookingResponseAsync(booking.Id);
 
         return ApiResponse<BookingResponse>.Ok(response!, "Booking status updated successfully");
+    }
+
+    public async Task<ApiResponse<BookingCancellationResponse>> CancelMyBookingAsync(
+    int bookingId,
+    CancelBookingRequest request,
+    CancellationToken cancellationToken = default)
+    {
+
+        var userId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<BookingCancellationResponse>.Fail("User is not authenticated");
+
+        var booking = await _context.Bookings
+            .Include(x => x.Payment)
+            .FirstOrDefaultAsync(x =>
+                x.Id == bookingId &&
+                x.UserId == userId,
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail("Booking not found.");
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail("Booking is already cancelled.");
+        }
+
+        if (booking.Status == BookingStatus.InProgress)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail("Booking cannot be cancelled after work has started.");
+        }
+
+        if (booking.Status == BookingStatus.Completed)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail("Completed bookings cannot be cancelled.");
+        }
+
+        if (booking.StartDate <= DateTime.UtcNow)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail("Past or already-started bookings cannot be cancelled.");
+        }
+
+        var canCancel =
+            booking.Status == BookingStatus.Pending ||
+            booking.Status == BookingStatus.Confirmed ||
+            booking.Status == BookingStatus.Assigned;
+
+        if (!canCancel)
+        {
+            return ApiResponse<BookingCancellationResponse>.Fail(
+                $"Booking with status {booking.Status} cannot be cancelled by the user.");
+        }
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.CancelledByUserId = userId;
+        booking.CancellationReason = string.IsNullOrWhiteSpace(request.Reason)
+            ? null
+            : request.Reason.Trim();
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var refundRequired =
+            booking.Payment is not null &&
+            booking.Payment.Status == PaymentStatus.Succeeded;
+
+        var response = new BookingCancellationResponse
+        {
+            BookingId = booking.Id,
+            Status = booking.Status.ToString(),
+            CancelledAt = booking.CancelledAt,
+            CancellationReason = booking.CancellationReason,
+            RefundRequired = refundRequired,
+            PaymentStatus = booking.Payment?.Status.ToString()
+        };
+
+        return ApiResponse<BookingCancellationResponse>.Ok(response);
     }
 
     private IQueryable<Booking> GetBookingQuery()

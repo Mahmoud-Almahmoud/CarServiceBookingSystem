@@ -7,6 +7,7 @@ using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
@@ -140,6 +141,32 @@ public class BookingsController : ControllerBase
 
         if (!response.Success)
         {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [HttpPut("{id:int}/cancel")]
+    public async Task<IActionResult> CancelMyBooking(
+    int id,
+    [FromBody] CancelBookingRequest request,
+    CancellationToken cancellationToken)
+    {
+
+        var response = await _bookingService.CancelMyBookingAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            if (response.Message == "Booking not found.")
+            {
+                return NotFound(response);
+            }
+
             return BadRequest(response);
         }
 
