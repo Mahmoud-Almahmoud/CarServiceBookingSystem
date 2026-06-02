@@ -43,6 +43,14 @@
     {
       "key": "X-Device-Fingerprint",
       "value": ""
+    },
+    {
+      "key": "apiKeyId",
+      "value": "1"
+    },
+    {
+      "key": "apiKeyRaw",
+      "value": ""
     }
   ],
   "item": [
@@ -625,6 +633,305 @@
               "mode": "raw",
               "raw": "{\n  \"status\": 2\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Keys",
+      "item": [
+        {
+          "name": "Create API Key (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data) {",
+                  "  pm.collectionVariables.set('apiKeyRaw', json.data.rawKey);",
+                  "  pm.collectionVariables.set('apiKeyId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{accessToken}}", "type": "string" }
+              ]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api-keys",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Integration Key\",\n  \"roles\": [\"Admin\"],\n  \"permissions\": [\"ApiKeys.Create\", \"ApiKeys.View\", \"ApiKeys.Revoke\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get API Keys (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{accessToken}}", "type": "string" }
+              ]
+            },
+            "url": "{{baseUrl}}/api-keys"
+          }
+        },
+        {
+          "name": "Revoke API Key (Admin)",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{accessToken}}", "type": "string" }
+              ]
+            },
+            "url": "{{baseUrl}}/api-keys/{{apiKeyId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Permissions (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/permissions"
+          }
+        },
+        {
+          "name": "Get Security Audit Logs (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/security-audit-logs?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Admin Payments - Get All",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/payments?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Admin Payments - Get By Id",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/payments/1"
+          }
+        },
+        {
+          "name": "Admin Payments - Refund",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": "{{baseUrl}}/admin/payments/1/refund",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100\n}" }
+          }
+        },
+        {
+          "name": "Admin Technicians - Get All",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/technicians?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Admin Technicians - Create",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": "{{baseUrl}}/admin/technicians",
+            "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Tech One\",\n  \"email\": \"tech@example.com\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {
+          "name": "Get Roles (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/roles"
+          }
+        },
+        {
+          "name": "Create Role (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": "{{baseUrl}}/admin/roles",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Manager\"\n}" }
+          }
+        },
+        {
+          "name": "Get Role By Id (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/roles/role-id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (Admin)",
+      "item": [
+        {
+          "name": "Get Users (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/users?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Get User By Id (Admin)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Lock User (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/users/{{userId}}/lock"
+          }
+        },
+        {
+          "name": "Unlock User (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/users/{{userId}}/unlock"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Background Jobs (Admin)",
+      "item": [
+        {
+          "name": "Get Background Job Statistics",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/background-jobs/statistics"
+          }
+        },
+        {
+          "name": "Get Failed Jobs",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/background-jobs/failed?page=1&pageSize=10"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Branches (Admin)",
+      "item": [
+        {
+          "name": "Get Service Branches",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/service-branches?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Create Service Branch",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": "{{baseUrl}}/admin/service-branches",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"address\": \"123 Main St\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Pricing",
+      "item": [
+        {
+          "name": "Get Service Price Quote",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/service-pricing/quote?carTrimId={{carTrimId}}&serviceId={{serviceId}}&startDate=2026-12-01T10:00:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Area Rules (Admin)",
+      "item": [
+        {
+          "name": "Get Service Area Rules",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/service-area-rules?pageNumber=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Maintenance - Cleanup Refresh Tokens (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/maintenance/cleanup/refresh-tokens"
+          }
+        },
+        {
+          "name": "Maintenance - Cleanup Trusted Devices (Admin)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+            "url": "{{baseUrl}}/admin/maintenance/cleanup/trusted-devices"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stripe Webhook",
+      "item": [
+        {
+          "name": "Post Stripe Webhook Event",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Stripe-Signature", "value": "t=123,v1=signature" }, { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": { \"object\": { \"id\": \"pi_123\" } }\n}" },
+            "url": "{{baseUrl}}/stripe/webhooks"
           }
         }
       ]

@@ -412,11 +412,20 @@ PUT  /api/v1/bookings/{id}/status
 
 ## API Keys
 
+Admin-only endpoints for managing API keys which can be used to authenticate non-user clients using an X-API-Key header. API key operations are protected by permission-based policies (Permissions.ApiKeys.Create, Permissions.ApiKeys.View, Permissions.ApiKeys.Revoke).
+
 ```txt
-POST   /api/v1/api-keys           (Requires ApiKeys.Create permission)
-GET    /api/v1/api-keys           (Requires ApiKeys.View permission)
-DELETE /api/v1/api-keys/{id}     (Requires ApiKeys.Revoke permission)
+POST   /api/v1/api-keys           (Requires ApiKeys.Create permission)   -> Creates a new API key and returns the raw key value once
+GET    /api/v1/api-keys           (Requires ApiKeys.View permission)     -> Returns list of API keys (hashed values only)
+DELETE /api/v1/api-keys/{id}     (Requires ApiKeys.Revoke permission)   -> Revokes an API key by id
 ```
+
+Usage example:
+- Include the returned raw API key in requests using the X-API-Key header when calling API endpoints protected by API keys.
+
+Postman collection variables added:
+- apiKeyId  (used to store created API key id)
+- apiKeyRaw (stores the raw API key returned when creating an API key)
 
 ---
 
