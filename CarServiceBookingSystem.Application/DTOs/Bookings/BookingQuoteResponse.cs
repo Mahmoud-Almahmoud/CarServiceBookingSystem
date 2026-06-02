@@ -9,6 +9,11 @@ public class BookingQuoteResponse
     public int ServiceId { get; set; }
 
     public string ServiceName { get; set; } = string.Empty;
+    public int? ServiceBranchId { get; set; }
+
+    public string? ServiceBranchName { get; set; }
+
+    public double? BranchStraightLineDistanceKm { get; set; }
 
     public ServiceLocationType LocationType { get; set; }
 

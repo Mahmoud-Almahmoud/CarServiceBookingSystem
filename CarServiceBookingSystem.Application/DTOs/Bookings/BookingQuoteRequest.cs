@@ -7,6 +7,7 @@ public class BookingQuoteRequest
     public int CarId { get; set; }
 
     public int ServiceId { get; set; }
+    public int? ServiceBranchId { get; set; }
 
     public ServiceLocationType LocationType { get; set; }
 

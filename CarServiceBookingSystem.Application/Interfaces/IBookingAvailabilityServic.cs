@@ -11,9 +11,11 @@ public interface IBookingAvailabilityService
         CancellationToken cancellationToken = default);
 
     Task<bool> IsSlotAvailableAsync(
+        int serviceBranchId,
         DateTime startDate,
         DateTime endDate,
         ServiceLocationType locationType,
         int? excludedBookingId = null,
         CancellationToken cancellationToken = default);
+
 }

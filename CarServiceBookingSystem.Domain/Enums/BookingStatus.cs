@@ -8,7 +8,9 @@ namespace CarServiceBookingSystem.Domain.Enums
     {
         Pending = 1,
         Confirmed = 2,
-        Completed = 3,
-        Cancelled = 4
+        Assigned = 3,
+        InProgress = 4,
+        Completed = 5,
+        Cancelled = 6
     }
 }

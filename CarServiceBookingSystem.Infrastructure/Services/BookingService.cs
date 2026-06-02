@@ -48,6 +48,7 @@ public class BookingService : IBookingService
             {
                 CarId = request.CarId,
                 ServiceId = request.ServiceId,
+                ServiceBranchId = request.ServiceBranchId,
                 LocationType = request.LocationType,
                 StartDate = request.StartDate,
                 CustomerLatitude = request.CustomerLatitude,
@@ -81,6 +82,7 @@ public class BookingService : IBookingService
             UserId = userId,
             CarId = request.CarId,
             ServiceId = request.ServiceId,
+            ServiceBranchId = quote.ServiceBranchId,
             LocationType = request.LocationType,
 
             StartDate = quote.StartDate,
@@ -116,7 +118,8 @@ public class BookingService : IBookingService
         var createdBooking = await _context.Bookings
             .AsNoTracking()
             .Include(x => x.Service)
-            .Include(x=>x.Car)
+            .Include(x => x.Car)
+            .Include(x => x.ServiceBranch)
             .FirstAsync(x => x.Id == booking.Id, cancellationToken);
 
         return new ApiResponse<BookingResponse>
@@ -188,6 +191,7 @@ public class BookingService : IBookingService
             .Take(request.PageSize)
             .Include(x => x.Service)
             .Include(x => x.Car)
+            .Include (x => x.Technician)
             .Select(x => ToResponse(x))
             .ToListAsync();
 
@@ -249,7 +253,9 @@ public class BookingService : IBookingService
         return _context.Bookings
             .AsNoTracking()
             .Include(x => x.Car)
-            .Include(x => x.Service);
+            .Include(x => x.Service)
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.Technician);
     }
 
     private async Task<BookingResponse?> BuildBookingResponseAsync(int bookingId)
@@ -258,6 +264,7 @@ public class BookingService : IBookingService
             .Where(x => x.Id == bookingId)
             .Include(x => x.Service)
             .Include(x => x.Car)
+            .Include(x => x.ServiceBranch)
             .Select(x => ToResponse(x))
             .FirstOrDefaultAsync();
     }
@@ -268,13 +275,19 @@ public class BookingService : IBookingService
         {
             Id = booking.Id,
             CarId = booking.CarId,
+            UserId = booking.UserId,
             PlateNumber = booking.Car.PlateNumber,
             ServiceId = booking.ServiceId,
+            ServiceBranchId = booking.ServiceBranchId,
+            ServiceBranchName = booking.ServiceBranch?.Name,
             ServiceName = booking.Service?.Name ?? string.Empty,
             LocationType = booking.LocationType,
             StartDate = booking.StartDate,
             EndDate = booking.EndDate,
             Status = booking.Status,
+
+            TechnicianId = booking.TechnicianId,
+            TechnicianName = booking.Technician?.FullName ?? string.Empty,
 
             ServicePrice = booking.ServicePrice,
             TravelFee = booking.TravelFee,
@@ -284,12 +297,16 @@ public class BookingService : IBookingService
             CustomerLongitude = booking.CustomerLongitude,
             CustomerCountryCode = booking.CustomerCountryCode,
             CustomerCity = booking.CustomerCity,
+            CustomerFormattedAddress = booking.CustomerFormattedAddress,
 
             DistanceKm = booking.DistanceKm,
             EstimatedTravelTimeMinutes = booking.EstimatedTravelTimeMinutes,
 
             ServicePriceRuleId = booking.ServicePriceRuleId,
             ServiceAreaRuleId = booking.ServiceAreaRuleId,
+
+            CreatedAt = booking.CreatedAt,
+            UpdatedAt = booking.UpdatedAt
         };
     }
 }

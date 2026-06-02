@@ -35,6 +35,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<IdempotencyKey> IdempotencyKeys { get; set; }
     public DbSet<StripeWebhookEvent> StripeWebhookEvents { get; set; }
     public DbSet<ServiceAreaRule> ServiceAreaRules => Set<ServiceAreaRule>();
+    public DbSet<ServiceBranch> ServiceBranches => Set<ServiceBranch>();
+    public DbSet<BranchWorkingHour> BranchWorkingHours => Set<BranchWorkingHour>();
+    public DbSet<BranchService> BranchServices => Set<BranchService>();
+    public DbSet<BranchClosure> BranchClosures => Set<BranchClosure>();
+    public DbSet<BranchCapacityRule> BranchCapacityRules => Set<BranchCapacityRule>();
+    public DbSet<Technician> Technicians { get; set; }
+    public DbSet<TechnicianService> TechnicianServices { get; set; }
+    public DbSet<TechnicianWorkingHour> TechnicianWorkingHours { get; set; }
+    public DbSet<TechnicianUnavailableDate> TechnicianUnavailableDates { get; set; }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -205,6 +215,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(x => x.DistanceKm)
                 .HasPrecision(10, 2);
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.Bookings)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.Bookings)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
            
 
@@ -291,6 +311,155 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(x => x.PaymentIntentId)
                 .IsUnique()
                 .HasFilter("[PaymentIntentId] IS NOT NULL");
+        });
+
+        builder.Entity<ServiceBranch>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(x => x.CountryCode)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entity.Property(x => x.City)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(x => x.Latitude)
+                .HasPrecision(10, 7);
+
+            entity.Property(x => x.Longitude)
+                .HasPrecision(10, 7);
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Name);
+
+            entity.HasIndex(x => new
+            {
+                x.CountryCode,
+                x.City,
+                x.IsActive
+            });
+        });
+
+        builder.Entity<BranchService>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.BranchServices)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Service)
+                .WithMany()
+                .HasForeignKey(x => x.ServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.ServiceId
+            }).IsUnique();
+        });
+
+        builder.Entity<BranchWorkingHour>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.DayOfWeek)
+                .IsRequired();
+
+            entity.Property(x => x.OpenTime)
+                .IsRequired();
+
+            entity.Property(x => x.CloseTime)
+                .IsRequired();
+
+            entity.Property(x => x.IsClosed)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.WorkingHours)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.DayOfWeek
+            }).IsUnique();
+        });
+
+        builder.Entity<BranchClosure>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.StartDate)
+                .IsRequired();
+
+            entity.Property(x => x.EndDate)
+                .IsRequired();
+
+            entity.Property(x => x.IsFullDay)
+                .IsRequired();
+
+            entity.Property(x => x.Type)
+                .IsRequired();
+
+            entity.Property(x => x.Reason)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.Closures)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.StartDate,
+                x.EndDate,
+                x.IsActive
+            });
+        });
+
+        builder.Entity<BranchCapacityRule>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Capacity)
+                .IsRequired();
+
+            entity.Property(x => x.IsActive)
+                .IsRequired();
+
+            entity.HasOne(x => x.ServiceBranch)
+                .WithMany(x => x.CapacityRules)
+                .HasForeignKey(x => x.ServiceBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new
+            {
+                x.ServiceBranchId,
+                x.DayOfWeek,
+                x.StartTime,
+                x.EndTime,
+                x.IsActive
+            });
         });
     }
 }

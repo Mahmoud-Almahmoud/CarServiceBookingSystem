@@ -143,6 +143,9 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<int?>("ServiceAreaRuleId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ServiceBranchId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ServiceId")
                         .HasColumnType("int");
 
@@ -157,6 +160,9 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TechnicianId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("TotalPrice")
@@ -181,9 +187,232 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CarId");
 
+                    b.HasIndex("ServiceBranchId");
+
                     b.HasIndex("ServiceId");
 
+                    b.HasIndex("TechnicianId");
+
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchCapacityRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ServiceBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan?>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceBranchId", "DayOfWeek", "StartTime", "EndTime", "IsActive");
+
+                    b.ToTable("BranchCapacityRules");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchClosure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFullDay")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("ServiceBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeSpan?>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceBranchId", "StartDate", "EndDate", "IsActive");
+
+                    b.ToTable("BranchClosures");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchService", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ServiceBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("ServiceBranchId", "ServiceId")
+                        .IsUnique();
+
+                    b.ToTable("BranchServices");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchWorkingHour", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<TimeSpan>("CloseTime")
+                        .HasColumnType("time");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan>("OpenTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("ServiceBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceBranchId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("BranchWorkingHours");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Car", b =>
@@ -778,6 +1007,70 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.ToTable("ServiceAreaRules");
                 });
 
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServiceBranch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("CountryCode", "City", "IsActive");
+
+                    b.ToTable("ServiceBranches");
+                });
+
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServicePriceRule", b =>
                 {
                     b.Property<int>("Id")
@@ -846,6 +1139,218 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("ServiceId", "CarBrandId", "CarModelId", "CarTrimId", "CarYearId", "IsActive");
 
                     b.ToTable("ServicePriceRules");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Technician", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("ServiceBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceBranchId");
+
+                    b.HasIndex("ServiceBranchId", "IsActive");
+
+                    b.ToTable("Technicians");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianService", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("TechnicianId", "ServiceId")
+                        .IsUnique();
+
+                    b.ToTable("TechnicianServices");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianUnavailableDate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeSpan?>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TechnicianId", "StartDate", "EndDate", "IsActive");
+
+                    b.ToTable("TechnicianUnavailableDates");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianWorkingHour", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<TimeSpan>("CloseTime")
+                        .HasColumnType("time");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan>("OpenTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TechnicianId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("TechnicianWorkingHours");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TrustedDevice", b =>
@@ -1181,15 +1686,81 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("Bookings")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CarServiceBookingSystem.Domain.Entities.Service", "Service")
                         .WithMany()
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Technician", "Technician")
+                        .WithMany("Bookings")
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Car");
 
                     b.Navigation("Service");
+
+                    b.Navigation("ServiceBranch");
+
+                    b.Navigation("Technician");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchCapacityRule", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("CapacityRules")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceBranch");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchClosure", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("Closures")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceBranch");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchService", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("BranchServices")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Service");
+
+                    b.Navigation("ServiceBranch");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchWorkingHour", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("WorkingHours")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceBranch");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Car", b =>
@@ -1295,6 +1866,58 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Navigation("Service");
                 });
 
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Technician", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.ServiceBranch", "ServiceBranch")
+                        .WithMany("Technicians")
+                        .HasForeignKey("ServiceBranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ServiceBranch");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianService", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Technician", "Technician")
+                        .WithMany("TechnicianServices")
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Service");
+
+                    b.Navigation("Technician");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianUnavailableDate", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Technician", "Technician")
+                        .WithMany("UnavailableDates")
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Technician");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianWorkingHour", b =>
+                {
+                    b.HasOne("CarServiceBookingSystem.Domain.Entities.Technician", "Technician")
+                        .WithMany("WorkingHours")
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Technician");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1374,6 +1997,32 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Service", b =>
                 {
                     b.Navigation("PriceRules");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServiceBranch", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("BranchServices");
+
+                    b.Navigation("CapacityRules");
+
+                    b.Navigation("Closures");
+
+                    b.Navigation("Technicians");
+
+                    b.Navigation("WorkingHours");
+                });
+
+            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Technician", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("TechnicianServices");
+
+                    b.Navigation("UnavailableDates");
+
+                    b.Navigation("WorkingHours");
                 });
 #pragma warning restore 612, 618
         }
