@@ -7,6 +7,7 @@ using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using CarServiceBookingSystem.Infrastructure.Services;
+using CarServiceBookingSystem.Infrastructure.Services.BackgroundJobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.Configure<BookingAvailabilityOptions>(configuration.GetSection("BookingAvailability"));
         services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
 
         var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
         var stripSettings = configuration.GetSection("StripeSettings").Get<StripeSettings>();
@@ -156,6 +158,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingAssignmentService, BookingAssignmentService>();
         services.AddScoped<IPaymentRefundService, PaymentRefundService>();
         services.AddScoped<ITechnicianScheduleService, TechnicianScheduleService>();
+        services.AddScoped<IBookingCleanupJob, BookingCleanupJob>();
 
         return services;
     }
