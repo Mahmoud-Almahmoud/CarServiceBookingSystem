@@ -13,4 +13,9 @@ public interface IBookingService
     int bookingId,
     CancelBookingRequest request,
     CancellationToken cancellationToken = default);
+
+    Task<ApiResponse<RescheduleBookingResponse>> RescheduleMyBookingAsync(
+    int bookingId,
+    RescheduleBookingRequest request,
+    CancellationToken cancellationToken = default);
 }

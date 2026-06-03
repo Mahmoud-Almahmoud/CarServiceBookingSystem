@@ -18,6 +18,7 @@ public class BookingService : IBookingService
     private readonly IBookingAvailabilityService _bookingAvailabilityService;
     private readonly IBookingQuoteService _bookingQuoteService;
     private readonly IPaymentRefundService _paymentRefundService;
+    private readonly IBookingAssignmentService _bookingAssignmentService;
 
     public BookingService(
         ApplicationDbContext context,
@@ -26,7 +27,8 @@ public class BookingService : IBookingService
         IEmailService emailService, 
         IBookingAvailabilityService bookingAvailabilityService,
         IBookingQuoteService bookingQuoteService,
-        IPaymentRefundService paymentRefundService)
+        IPaymentRefundService paymentRefundService,
+        IBookingAssignmentService bookingAssignmentService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -35,6 +37,7 @@ public class BookingService : IBookingService
         _bookingAvailabilityService = bookingAvailabilityService;
         _bookingQuoteService = bookingQuoteService;
         _paymentRefundService = paymentRefundService;
+        _bookingAssignmentService = bookingAssignmentService;
     }
     
     public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request,CancellationToken cancellationToken = default)
@@ -345,6 +348,156 @@ public class BookingService : IBookingService
         };
 
         return ApiResponse<BookingCancellationResponse>.Ok(response);
+    }
+
+    public async Task<ApiResponse<RescheduleBookingResponse>> RescheduleMyBookingAsync(
+    int bookingId,
+    RescheduleBookingRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return ApiResponse<RescheduleBookingResponse>.Fail("User is not authenticated");
+
+        var booking = await _context.Bookings
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.Technician)
+            .FirstOrDefaultAsync(x =>
+                x.Id == bookingId &&
+                x.UserId == userId,
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Booking not found.");
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Cancelled bookings cannot be rescheduled.");
+        }
+
+        if (booking.Status == BookingStatus.Completed)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Completed bookings cannot be rescheduled.");
+        }
+
+        if (booking.Status == BookingStatus.InProgress)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Bookings in progress cannot be rescheduled.");
+        }
+
+        if (booking.StartDate <= DateTime.UtcNow)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Past or already-started bookings cannot be rescheduled.");
+        }
+
+        var canReschedule =
+            booking.Status == BookingStatus.Pending ||
+            booking.Status == BookingStatus.Confirmed ||
+            booking.Status == BookingStatus.Assigned;
+
+        if (!canReschedule)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail(
+                $"Booking with status {booking.Status} cannot be rescheduled.");
+        }
+
+        var quoteRequest = new BookingQuoteRequest
+        {
+            CarId = booking.CarId,
+            ServiceId = booking.ServiceId,
+            StartDate = request.StartDate,
+            LocationType = booking.LocationType,
+            ServiceBranchId = request.ServiceBranchId ?? booking.ServiceBranchId,
+            CustomerLatitude = request.CustomerLatitude ?? booking.CustomerLatitude,
+            CustomerLongitude = request.CustomerLongitude ?? booking.CustomerLongitude,
+            CustomerCountryCode = request.CustomerCountryCode ?? booking.CustomerCountryCode,
+            CustomerCity = request.CustomerCity ?? booking.CustomerCity
+        };
+
+        var quoteResponse = await _bookingQuoteService.GetQuoteAsync(
+            quoteRequest,
+            cancellationToken);
+
+        if (!quoteResponse.Success || quoteResponse.Data is null)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail(
+                quoteResponse.Message ?? "Unable to calculate booking quote.");
+        }
+
+        var quote = quoteResponse.Data;
+
+        if (!quote.IsAvailable)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail(
+                quote.UnavailableReason ?? "The selected slot is not available.");
+        }
+
+        booking.StartDate = request.StartDate;
+        booking.EndDate = quote.EndDate;
+
+        booking.ServicePrice = quote.ServicePrice;
+        booking.TravelFee = quote.TravelFee;
+        booking.TotalPrice = quote.TotalPrice;
+
+        booking.CustomerLatitude = request.CustomerLatitude ?? booking.CustomerLatitude;
+        booking.CustomerLongitude = request.CustomerLongitude ?? booking.CustomerLongitude;
+        booking.CustomerCountryCode = quote.CustomerCountryCode;
+        booking.CustomerCity = quote.CustomerCity;
+        booking.CustomerFormattedAddress = quote.CustomerFormattedAddress;
+
+        booking.DistanceKm = quote.DistanceKm;
+        booking.EstimatedTravelTimeMinutes = quote.EstimatedTravelTimeMinutes;
+
+        booking.ServicePriceRuleId = quote.ServicePriceRuleId;
+        booking.ServiceAreaRuleId = quote.MatchedServiceAreaRuleId;
+        booking.ServiceBranchId = quote.ServiceBranchId;
+
+        booking.TechnicianId = null;
+
+        if (booking.Status == BookingStatus.Assigned)
+        {
+            booking.Status = BookingStatus.Confirmed;
+        }
+
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var assignmentResponse = await _bookingAssignmentService.AutoAssignTechnicianAsync(
+            booking.Id,
+            cancellationToken);
+
+        var updatedBooking = await _context.Bookings
+            .AsNoTracking()
+            .Include(x => x.ServiceBranch)
+            .Include(x => x.Technician)
+            .FirstOrDefaultAsync(x => x.Id == booking.Id, cancellationToken);
+
+        if (updatedBooking is null)
+        {
+            return ApiResponse<RescheduleBookingResponse>.Fail("Booking not found after reschedule.");
+        }
+
+        var response = new RescheduleBookingResponse
+        {
+            BookingId = updatedBooking.Id,
+            StartDate = updatedBooking.StartDate,
+            EndDate = updatedBooking.EndDate,
+            ServiceBranchId = updatedBooking.ServiceBranchId,
+            ServiceBranchName = updatedBooking.ServiceBranch?.Name,
+            TechnicianId = updatedBooking.TechnicianId,
+            TechnicianName = updatedBooking.Technician?.FullName,
+            ServicePrice = updatedBooking.ServicePrice,
+            TravelFee = updatedBooking.TravelFee,
+            TotalPrice = updatedBooking.TotalPrice,
+            Status = updatedBooking.Status.ToString(),
+            TechnicianReassigned = assignmentResponse.Success && updatedBooking.TechnicianId.HasValue
+        };
+
+        return ApiResponse<RescheduleBookingResponse>.Ok(response);
     }
 
     private IQueryable<Booking> GetBookingQuery()
