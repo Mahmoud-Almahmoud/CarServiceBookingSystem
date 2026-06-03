@@ -155,6 +155,7 @@ public static class DependencyInjection
         services.AddScoped<ITechnicianService, TechnicianManagementService>();
         services.AddScoped<IBookingAssignmentService, BookingAssignmentService>();
         services.AddScoped<IPaymentRefundService, PaymentRefundService>();
+        services.AddScoped<ITechnicianScheduleService, TechnicianScheduleService>();
 
         return services;
     }
