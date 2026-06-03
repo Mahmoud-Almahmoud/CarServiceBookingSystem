@@ -17,6 +17,10 @@ public class CurrentUserService : ICurrentUserService
         _httpContextAccessor.HttpContext?.User?
             .FindFirstValue(ClaimTypes.NameIdentifier);
 
+    public string? FullName =>
+       _httpContextAccessor.HttpContext?.User?
+           .FindFirstValue(ClaimTypes.Name);
+
     public string? Email =>
         _httpContextAccessor.HttpContext?.User?
             .FindFirstValue(ClaimTypes.Email);
