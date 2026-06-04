@@ -7,6 +7,10 @@ public class RefundPaymentRequestValidator : AbstractValidator<RefundPaymentRequ
 {
     public RefundPaymentRequestValidator()
     {
+        RuleFor(x => x.Amount)
+            .GreaterThan(0)
+            .When(x => x.Amount.HasValue);
+
         RuleFor(x => x.Reason)
             .MaximumLength(500)
             .When(x => !string.IsNullOrWhiteSpace(x.Reason));

@@ -29,6 +29,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -38,7 +39,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var service = new Service
         {
@@ -95,6 +97,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -104,7 +107,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var request = new CreateBookingRequest
         {
@@ -134,6 +138,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -143,7 +148,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var car = new Car
         {
@@ -182,6 +188,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -191,7 +198,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var service = new Service
         {
@@ -238,6 +246,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -247,7 +256,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var service = new Service
         {
@@ -309,6 +319,7 @@ public class BookingServiceTests
         var bookingQuoteServiceMock = new Mock<IBookingQuoteService>();
         var paymentRefundServiceMock = new Mock<IPaymentRefundService>();   
         var bookingAssignmentServiceMock = new Mock<IBookingAssignmentService>();
+        var cancellationPolicyRuleServiceMock = new Mock<ICancellationPolicyRuleService>();
 
         var bookingService = new BookingService(
             context,
@@ -318,7 +329,8 @@ public class BookingServiceTests
             bookingAvailabilityServiceMock.Object,
             bookingQuoteServiceMock.Object,
             paymentRefundServiceMock.Object,
-            bookingAssignmentServiceMock.Object);
+            bookingAssignmentServiceMock.Object,
+            cancellationPolicyRuleServiceMock.Object);
 
         var user = new ApplicationUser
         {
