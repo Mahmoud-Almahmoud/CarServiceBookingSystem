@@ -20,6 +20,7 @@ public class BookingService : IBookingService
     private readonly IPaymentRefundService _paymentRefundService;
     private readonly IBookingAssignmentService _bookingAssignmentService;
     private readonly ICancellationPolicyRuleService _cancellationPolicyRuleService;
+    private readonly IPromoCodeService _promoCodeService;
 
     public BookingService(
         ApplicationDbContext context,
@@ -30,7 +31,8 @@ public class BookingService : IBookingService
         IBookingQuoteService bookingQuoteService,
         IPaymentRefundService paymentRefundService,
         IBookingAssignmentService bookingAssignmentService,
-        ICancellationPolicyRuleService cancellationPolicyRuleService)
+        ICancellationPolicyRuleService cancellationPolicyRuleService,
+        IPromoCodeService promoCodeService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -41,6 +43,7 @@ public class BookingService : IBookingService
         _paymentRefundService = paymentRefundService;
         _bookingAssignmentService = bookingAssignmentService;
         _cancellationPolicyRuleService = cancellationPolicyRuleService;
+        _promoCodeService = promoCodeService;
     }
     
     public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request,CancellationToken cancellationToken = default)
@@ -63,7 +66,8 @@ public class BookingService : IBookingService
                 CustomerLatitude = request.CustomerLatitude,
                 CustomerLongitude = request.CustomerLongitude,
                 CustomerCountryCode = request.CustomerCountryCode,
-                CustomerCity = request.CustomerCity
+                CustomerCity = request.CustomerCity,
+                PromoCode = request.PromoCode
             },cancellationToken);
 
         if (!quoteResponse.Success || quoteResponse.Data is null)
@@ -100,7 +104,12 @@ public class BookingService : IBookingService
 
             ServicePrice = quote.ServicePrice,
             TravelFee = quote.TravelFee,
+            SubtotalPrice = quote.SubtotalPrice,
+            DiscountAmount = quote.DiscountAmount,
             TotalPrice = quote.TotalPrice,
+
+            PromoCodeId = quote.PromoCodeId,
+            PromoCodeSnapshot = quote.PromoCode,
 
             CustomerLatitude = quote.CustomerLatitude,
             CustomerLongitude = quote.CustomerLongitude,
@@ -119,8 +128,19 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
+
         await _context.Bookings.AddAsync(booking, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (quote.PromoCodeId.HasValue && quote.DiscountAmount > 0)
+        {
+            await _promoCodeService.RedeemAsync(
+                quote.PromoCodeId.Value,
+                booking.Id,
+                userId,
+                quote.DiscountAmount,
+                cancellationToken);
+        }
 
         await transaction.CommitAsync(cancellationToken);
 

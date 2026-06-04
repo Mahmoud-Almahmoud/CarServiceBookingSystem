@@ -160,6 +160,7 @@ public static class DependencyInjection
         services.AddScoped<ITechnicianScheduleService, TechnicianScheduleService>();
         services.AddScoped<IBookingCleanupJob, BookingCleanupJob>();
         services.AddScoped<ICancellationPolicyRuleService, CancellationPolicyRuleService>();
+        services.AddScoped<IPromoCodeService, PromoCodeService>();
 
         return services;
     }

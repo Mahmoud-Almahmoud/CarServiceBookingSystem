@@ -45,6 +45,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TechnicianWorkingHour> TechnicianWorkingHours { get; set; }
     public DbSet<TechnicianUnavailableDate> TechnicianUnavailableDates { get; set; }
     public DbSet<CancellationPolicyRule> CancellationPolicyRules { get; set; }
+    public DbSet<PromoCode> PromoCodes { get; set; }
+    public DbSet<PromoCodeRedemption> PromoCodeRedemptions { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -232,6 +234,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(x => x.CancelledByUserId)
                 .HasMaxLength(450);
+
+            entity.Property(x => x.PromoCodeSnapshot)
+                .HasMaxLength(50);
+
+            entity.Property(x => x.SubtotalPrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.DiscountAmount)
+                .HasPrecision(18, 2);
+
+            entity.HasOne(x => x.PromoCode)
+                .WithMany()
+                .HasForeignKey(x => x.PromoCodeId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
            
 

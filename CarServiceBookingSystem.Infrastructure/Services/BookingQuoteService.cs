@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.DTOs.Bookings;
+using CarServiceBookingSystem.Application.DTOs.PromoCodes;
 using CarServiceBookingSystem.Application.DTOs.ServiceAreas;
 using CarServiceBookingSystem.Application.DTOs.ServicePricing;
 using CarServiceBookingSystem.Application.Interfaces;
@@ -19,6 +20,7 @@ public class BookingQuoteService : IBookingQuoteService
     private readonly ICurrentUserService _currentUserService;
     private readonly IReverseGeocodingService _reverseGeocodingService;
     private readonly IServiceBranchService _serviceBranchService;
+    private readonly IPromoCodeService _promoCodeService;
 
     public BookingQuoteService(
         IServicePricingService servicePricingService,
@@ -28,7 +30,8 @@ public class BookingQuoteService : IBookingQuoteService
         IServiceAreaService serviceAreaService,
         ICurrentUserService currentUserService,
         IReverseGeocodingService reverseGeocodingService,
-        IServiceBranchService serviceBranchService)
+        IServiceBranchService serviceBranchService,
+        IPromoCodeService promoCodeService)
     {
         _servicePricingService = servicePricingService;
         _bookingAvailabilityService = bookingAvailabilityService;
@@ -38,6 +41,7 @@ public class BookingQuoteService : IBookingQuoteService
         _currentUserService = currentUserService;
         _reverseGeocodingService = reverseGeocodingService;
         _serviceBranchService = serviceBranchService;
+        _promoCodeService = promoCodeService;
     }
 
     public async Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(
@@ -210,6 +214,8 @@ public class BookingQuoteService : IBookingQuoteService
 
                         ServicePrice = pricing.Price,
                         TravelFee = 0,
+                        SubtotalPrice = pricing.Price,
+                        DiscountAmount = 0,
                         TotalPrice = pricing.Price,
 
                         IsAvailable = false,
@@ -258,6 +264,8 @@ public class BookingQuoteService : IBookingQuoteService
 
                         ServicePrice = pricing.Price,
                         TravelFee = 0,
+                        SubtotalPrice = pricing.Price,
+                        DiscountAmount = 0,
                         TotalPrice = pricing.Price,
 
                         IsAvailable = false,
@@ -313,6 +321,49 @@ public class BookingQuoteService : IBookingQuoteService
             };
         }
 
+        var subtotalPrice = pricing.Price + travelFee;
+
+        var discountAmount = 0m;
+        int? promoCodeId = null;
+        string? appliedPromoCode = null;
+        string? promoCodeMessage = null;
+
+        if (!string.IsNullOrWhiteSpace(request.PromoCode))
+        {
+            var promoValidation = await _promoCodeService.ValidateAsync(
+                new PromoCodeValidationRequest
+                {
+                    PromoCode = request.PromoCode,
+                    UserId = userId,
+                    ServiceId = request.ServiceId,
+                    ServiceBranchId = serviceBranchId,
+                    SubtotalPrice = subtotalPrice
+                },
+                cancellationToken);
+
+            promoCodeMessage = promoValidation.Message;
+
+            if (!promoValidation.IsValid)
+            {
+                return new ApiResponse<BookingQuoteResponse>
+                {
+                    Success = false,
+                    Message = promoValidation.Message ?? "Invalid promo code."
+                };
+            }
+
+            promoCodeId = promoValidation.PromoCodeId;
+            appliedPromoCode = promoValidation.PromoCode;
+            discountAmount = promoValidation.DiscountAmount;
+        }
+
+        var totalPrice = subtotalPrice - discountAmount;
+
+        if (totalPrice < 0)
+        {
+            totalPrice = 0;
+        }
+
         var isSlotAvailable = await _bookingAvailabilityService.IsSlotAvailableAsync(
             serviceBranchId.Value,
             request.StartDate,
@@ -333,7 +384,13 @@ public class BookingQuoteService : IBookingQuoteService
 
             ServicePrice = pricing.Price,
             TravelFee = travelFee,
-            TotalPrice = pricing.Price + travelFee,
+            SubtotalPrice = subtotalPrice,
+            DiscountAmount = discountAmount,
+            TotalPrice = totalPrice,
+
+            PromoCodeId = promoCodeId,
+            PromoCode = appliedPromoCode,
+            PromoCodeMessage = promoCodeMessage,
 
             ServiceBranchId = serviceBranchId,
             ServiceBranchName = serviceBranchName,

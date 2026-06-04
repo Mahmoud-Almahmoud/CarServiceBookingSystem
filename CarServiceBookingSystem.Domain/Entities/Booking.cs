@@ -56,5 +56,16 @@ namespace CarServiceBookingSystem.Domain.Entities
         public int? ServiceAreaRuleId { get; set; }
 
         public Payment? Payment { get; set; }
+
+        public int? PromoCodeId { get; set; }
+        public PromoCode? PromoCode { get; set; }
+
+        public string? PromoCodeSnapshot { get; set; }
+
+        public decimal SubtotalPrice { get; set; }
+
+        public decimal DiscountAmount { get; set; }
+
+        public PromoCodeRedemption? PromoCodeRedemption { get; set; }
     }
 }
