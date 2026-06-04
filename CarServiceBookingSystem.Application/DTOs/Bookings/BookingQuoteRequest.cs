@@ -9,6 +9,8 @@ public class BookingQuoteRequest
     public int ServiceId { get; set; }
     public int? ServiceBranchId { get; set; }
 
+    public string? PromoCode { get; set; }
+
     public ServiceLocationType LocationType { get; set; }
 
     public DateTime StartDate { get; set; }

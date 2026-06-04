@@ -98,6 +98,12 @@ public class PaymentService : IPaymentService
             };
         }
 
+        if (booking.TotalPrice <= 0)
+        {
+            return ApiResponse<PaymentIntentResponse>.Fail(
+                "This booking does not require payment because the total price is zero.");
+        }
+
         var existingPayment = await _context.Payments
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
