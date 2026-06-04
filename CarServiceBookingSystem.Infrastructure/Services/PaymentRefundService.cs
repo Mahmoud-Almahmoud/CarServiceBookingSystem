@@ -35,9 +35,9 @@ public class PaymentRefundService : IPaymentRefundService
     }
 
     public async Task<ApiResponse<RefundPaymentResponse>> RefundPaymentAsync(
-        int paymentId,
-        RefundPaymentRequest request,
-        CancellationToken cancellationToken = default)
+    int paymentId,
+    RefundPaymentRequest request,
+    CancellationToken cancellationToken = default)
     {
         var payment = await _context.Payments
             .Include(x => x.Booking)
@@ -50,10 +50,11 @@ public class PaymentRefundService : IPaymentRefundService
 
         if (payment.Status == PaymentStatus.Refunded)
         {
-            return ApiResponse<RefundPaymentResponse>.Fail("Payment is already refunded.");
+            return ApiResponse<RefundPaymentResponse>.Fail("Payment is already fully refunded.");
         }
 
-        if (payment.Status != PaymentStatus.Succeeded)
+        if (payment.Status != PaymentStatus.Succeeded &&
+            payment.Status != PaymentStatus.PartiallyRefunded)
         {
             return ApiResponse<RefundPaymentResponse>.Fail("Only succeeded payments can be refunded.");
         }
@@ -63,6 +64,27 @@ public class PaymentRefundService : IPaymentRefundService
             return ApiResponse<RefundPaymentResponse>.Fail("Payment does not have a Stripe PaymentIntent ID.");
         }
 
+        var alreadyRefundedAmount = payment.RefundedAmount ?? 0m;
+        var remainingRefundableAmount = payment.Amount - alreadyRefundedAmount;
+
+        if (remainingRefundableAmount <= 0)
+        {
+            return ApiResponse<RefundPaymentResponse>.Fail("Payment has no remaining refundable amount.");
+        }
+
+        var requestedRefundAmount = request.Amount ?? remainingRefundableAmount;
+
+        if (requestedRefundAmount <= 0)
+        {
+            return ApiResponse<RefundPaymentResponse>.Fail("Refund amount must be greater than zero.");
+        }
+
+        if (requestedRefundAmount > remainingRefundableAmount)
+        {
+            return ApiResponse<RefundPaymentResponse>.Fail(
+                $"Refund amount cannot exceed remaining refundable amount: {remainingRefundableAmount} {payment.Currency}.");
+        }
+
         try
         {
             var refundService = new RefundService();
@@ -70,18 +92,20 @@ public class PaymentRefundService : IPaymentRefundService
             var refundOptions = new RefundCreateOptions
             {
                 PaymentIntent = payment.PaymentIntentId,
+                Amount = ConvertToSmallestCurrencyUnit(requestedRefundAmount, payment.Currency),
                 Reason = "requested_by_customer",
                 Metadata = new Dictionary<string, string>
                 {
                     ["paymentId"] = payment.Id.ToString(),
                     ["bookingId"] = payment.BookingId.ToString(),
-                    ["reason"] = request.Reason ?? string.Empty
+                    ["reason"] = request.Reason ?? string.Empty,
+                    ["requestedRefundAmount"] = requestedRefundAmount.ToString("0.00")
                 }
             };
 
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"booking-payment-refund-{payment.BookingId}"
+                IdempotencyKey = $"booking-payment-refund-{payment.BookingId}-{requestedRefundAmount:0.00}"
             };
 
             var refund = await refundService.CreateAsync(
@@ -90,13 +114,27 @@ public class PaymentRefundService : IPaymentRefundService
                 cancellationToken);
 
             payment.StripeRefundId = refund.Id;
-            payment.RefundedAmount = ConvertFromSmallestCurrencyUnit(refund.Amount, payment.Currency);
-            payment.RefundedAt = DateTime.UtcNow;
+
+            var stripeRefundedAmount = ConvertFromSmallestCurrencyUnit(refund.Amount, payment.Currency);
+            var totalRefundedAmount = alreadyRefundedAmount + stripeRefundedAmount;
+
+            payment.RefundedAmount = totalRefundedAmount > payment.Amount
+                ? payment.Amount
+                : totalRefundedAmount;
+
             payment.RefundFailureReason = null;
 
             if (refund.Status == "succeeded")
             {
-                payment.Status = PaymentStatus.Refunded;
+                if (payment.RefundedAmount >= payment.Amount)
+                {
+                    payment.Status = PaymentStatus.Refunded;
+                    payment.RefundedAt ??= DateTime.UtcNow;
+                }
+                else
+                {
+                    payment.Status = PaymentStatus.PartiallyRefunded;
+                }
             }
             else
             {
@@ -148,5 +186,19 @@ public class PaymentRefundService : IPaymentRefundService
         return zeroDecimalCurrencies.Contains(currency)
             ? amount
             : amount / 100m;
+    }
+
+    private static long ConvertToSmallestCurrencyUnit(decimal amount, string currency)
+    {
+        var zeroDecimalCurrencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw",
+        "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf",
+        "xof", "xpf"
+    };
+
+        return zeroDecimalCurrencies.Contains(currency)
+            ? (long)Math.Round(amount, 0, MidpointRounding.AwayFromZero)
+            : (long)Math.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
     }
 }

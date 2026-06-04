@@ -12,5 +12,11 @@ public class BookingCancellationResponse
 
     public bool RefundRequired { get; set; }
 
+    public decimal RefundPercentage { get; set; }
+
+    public decimal RefundAmount { get; set; }
+
+    public int? CancellationPolicyRuleId { get; set; }
+
     public string? PaymentStatus { get; set; }
 }

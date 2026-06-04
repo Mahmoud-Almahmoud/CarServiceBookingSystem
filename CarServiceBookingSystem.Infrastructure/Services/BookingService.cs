@@ -19,6 +19,7 @@ public class BookingService : IBookingService
     private readonly IBookingQuoteService _bookingQuoteService;
     private readonly IPaymentRefundService _paymentRefundService;
     private readonly IBookingAssignmentService _bookingAssignmentService;
+    private readonly ICancellationPolicyRuleService _cancellationPolicyRuleService;
 
     public BookingService(
         ApplicationDbContext context,
@@ -28,7 +29,8 @@ public class BookingService : IBookingService
         IBookingAvailabilityService bookingAvailabilityService,
         IBookingQuoteService bookingQuoteService,
         IPaymentRefundService paymentRefundService,
-        IBookingAssignmentService bookingAssignmentService)
+        IBookingAssignmentService bookingAssignmentService,
+        ICancellationPolicyRuleService cancellationPolicyRuleService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -38,6 +40,7 @@ public class BookingService : IBookingService
         _bookingQuoteService = bookingQuoteService;
         _paymentRefundService = paymentRefundService;
         _bookingAssignmentService = bookingAssignmentService;
+        _cancellationPolicyRuleService = cancellationPolicyRuleService;
     }
     
     public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request,CancellationToken cancellationToken = default)
@@ -308,6 +311,23 @@ public class BookingService : IBookingService
                 $"Booking with status {booking.Status} cannot be cancelled by the user.");
         }
 
+        var hasSucceededPayment =
+            booking.Payment is not null &&
+            (
+                booking.Payment.Status == PaymentStatus.Succeeded ||
+                booking.Payment.Status == PaymentStatus.PartiallyRefunded
+            );
+
+        var paidAmount = booking.Payment?.Amount ?? 0m;
+
+        var cancellationPolicy = await _cancellationPolicyRuleService.CalculateCancellationPolicyAsync(
+            booking.ServiceId,
+            booking.ServiceBranchId,
+            booking.StartDate,
+            paidAmount,
+            hasSucceededPayment,
+            cancellationToken);
+
         booking.Status = BookingStatus.Cancelled;
         booking.CancelledAt = DateTime.UtcNow;
         booking.CancelledByUserId = userId;
@@ -318,24 +338,21 @@ public class BookingService : IBookingService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        var refundRequired =
-            booking.Payment is not null &&
-            booking.Payment.Status == PaymentStatus.Succeeded;
-
-        if (refundRequired)
+        if (cancellationPolicy.RefundRequired && booking.Payment is not null)
         {
-            await _paymentRefundService.RefundBookingPaymentAsync(
-                booking.Id,
+            await _paymentRefundService.RefundPaymentAsync(
+                booking.Payment.Id,
                 new RefundPaymentRequest
                 {
+                    Amount = cancellationPolicy.RefundAmount,
                     Reason = booking.CancellationReason
                 },
                 cancellationToken);
-        }
 
-        await _context.Entry(booking)
-            .Reference(x => x.Payment)
-            .LoadAsync(cancellationToken);
+            await _context.Entry(booking)
+                .Reference(x => x.Payment)
+                .LoadAsync(cancellationToken);
+        }
 
         var response = new BookingCancellationResponse
         {
@@ -343,8 +360,11 @@ public class BookingService : IBookingService
             Status = booking.Status.ToString(),
             CancelledAt = booking.CancelledAt,
             CancellationReason = booking.CancellationReason,
-            RefundRequired = refundRequired,
-            PaymentStatus = booking.Payment?.Status.ToString()
+            RefundRequired = cancellationPolicy.RefundRequired,
+            RefundPercentage = cancellationPolicy.RefundPercentage,
+            RefundAmount = cancellationPolicy.RefundAmount,
+            PaymentStatus = booking.Payment?.Status.ToString(),
+            CancellationPolicyRuleId = cancellationPolicy.CancellationPolicyRuleId
         };
 
         return ApiResponse<BookingCancellationResponse>.Ok(response);

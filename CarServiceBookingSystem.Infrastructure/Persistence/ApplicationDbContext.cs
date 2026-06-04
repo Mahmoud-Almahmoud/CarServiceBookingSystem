@@ -44,6 +44,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TechnicianService> TechnicianServices { get; set; }
     public DbSet<TechnicianWorkingHour> TechnicianWorkingHours { get; set; }
     public DbSet<TechnicianUnavailableDate> TechnicianUnavailableDates { get; set; }
+    public DbSet<CancellationPolicyRule> CancellationPolicyRules { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

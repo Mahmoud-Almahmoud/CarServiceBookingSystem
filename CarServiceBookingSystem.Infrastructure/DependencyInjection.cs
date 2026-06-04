@@ -159,6 +159,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRefundService, PaymentRefundService>();
         services.AddScoped<ITechnicianScheduleService, TechnicianScheduleService>();
         services.AddScoped<IBookingCleanupJob, BookingCleanupJob>();
+        services.AddScoped<ICancellationPolicyRuleService, CancellationPolicyRuleService>();
 
         return services;
     }

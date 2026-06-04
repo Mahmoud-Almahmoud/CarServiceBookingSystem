@@ -12,6 +12,7 @@ namespace CarServiceBookingSystem.Domain.Enums
         Cancelled = 4,
         RefundPending = 5,
         Refunded = 6,
-        RefundFailed = 7
+        RefundFailed = 7,
+        PartiallyRefunded = 8
     }
 }
