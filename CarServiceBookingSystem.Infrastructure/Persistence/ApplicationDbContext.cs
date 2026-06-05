@@ -47,6 +47,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CancellationPolicyRule> CancellationPolicyRules { get; set; }
     public DbSet<PromoCode> PromoCodes { get; set; }
     public DbSet<PromoCodeRedemption> PromoCodeRedemptions { get; set; }
+    public DbSet<BookingReview> BookingReviews { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
