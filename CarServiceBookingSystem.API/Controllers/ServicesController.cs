@@ -1,9 +1,11 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.DTOs.Reviews;
 using CarServiceBookingSystem.Application.DTOs.Services;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Domain.Enums;
+using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,10 +17,12 @@ namespace CarServiceBookingSystem.API.Controllers;
 public class ServicesController : ControllerBase
 {
     private readonly IServiceService _serviceService;
+    private readonly IBookingReviewService _bookingReviewService;
 
-    public ServicesController(IServiceService serviceService)
+    public ServicesController(IServiceService serviceService, IBookingReviewService bookingReviewService)
     {
         _serviceService = serviceService;
+        _bookingReviewService = bookingReviewService;
     }
 
     [HttpGet]
@@ -63,5 +67,25 @@ public class ServicesController : ControllerBase
             return NotFound(result);
 
         return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/reviews")]
+    public async Task<IActionResult> GetServiceReviews(
+    int id,
+    [FromQuery] PublicServiceReviewQueryRequest request,
+    CancellationToken cancellationToken)
+    {
+        var response = await _bookingReviewService.GetPublicServiceReviewsAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
+        }
+
+        return Ok(response);
     }
 }

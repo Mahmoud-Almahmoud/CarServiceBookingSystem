@@ -67,5 +67,7 @@ namespace CarServiceBookingSystem.Domain.Entities
         public decimal DiscountAmount { get; set; }
 
         public PromoCodeRedemption? PromoCodeRedemption { get; set; }
+
+        public BookingReview? Review { get; set; }
     }
 }
