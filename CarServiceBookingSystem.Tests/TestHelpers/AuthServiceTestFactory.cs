@@ -35,6 +35,7 @@ public static class AuthServiceTestFactory
         backgroundJobServiceMock ??= new Mock<IBackgroundJobService>();
         securityAuditServiceMock ??= new Mock<ISecurityAuditService>();
         qrCodeServiceMock ??= new Mock<IQrCodeService>();
+        
         if (geoLocationServiceMock == null)
         {
             geoLocationServiceMock = new Mock<IGeoLocationService>();

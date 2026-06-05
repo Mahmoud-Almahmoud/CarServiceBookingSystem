@@ -10,6 +10,7 @@ using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography;
 
@@ -26,6 +27,7 @@ public class AuthService : IAuthService
     private readonly IQrCodeService _qrCodeService;
     private readonly IGeoLocationService _geoLocationService;
     private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly JwtSettings _jwtSettings;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -34,7 +36,8 @@ public class AuthService : IAuthService
         IBackgroundJobService backgroundJobService,
         ISecurityAuditService securityAuditService,
         IQrCodeService qrCodeService,
-        IGeoLocationService geoLocationService, RoleManager<IdentityRole> roleManager)
+        IGeoLocationService geoLocationService, RoleManager<IdentityRole> roleManager,
+        IOptions<JwtSettings> jwtOptions)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -45,6 +48,7 @@ public class AuthService : IAuthService
         _securityAuditService = securityAuditService;
         _geoLocationService = geoLocationService;
         _roleManager = roleManager;
+        _jwtSettings = jwtOptions.Value;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -83,7 +87,7 @@ public class AuthService : IAuthService
         {
             UserId = user.Id,
             Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
@@ -336,7 +340,7 @@ public class AuthService : IAuthService
         {
             UserId = user.Id,
             Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
@@ -434,7 +438,7 @@ public class AuthService : IAuthService
         {
             UserId = user.Id,
             Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
@@ -710,7 +714,7 @@ public class AuthService : IAuthService
         {
             UserId = user.Id,
             Token = TokenHasher.Hash(rawRefreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),
@@ -856,7 +860,7 @@ public class AuthService : IAuthService
         {
             UserId = user.Id,
             Token = TokenHasher.Hash(rawRefreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             IsRevoked = false,
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress(),

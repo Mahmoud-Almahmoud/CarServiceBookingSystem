@@ -18,16 +18,16 @@ public class EmailService : IEmailService
     {
         using var message = new MailMessage();
 
-        message.From = new MailAddress(_settings.FromEmail, _settings.FromName);
+        message.From = new MailAddress(_settings.Username, _settings.Name);
         message.To.Add(to);
         message.Subject = subject;
         message.Body = body;
         message.IsBodyHtml = false;
 
-        using var client = new SmtpClient(_settings.Host, _settings.Port);
+        using var client = new SmtpClient(_settings.SmtpServer, _settings.Port);
 
         client.Credentials = new NetworkCredential(
-            _settings.FromEmail,
+            _settings.Username,
             _settings.Password);
 
         client.EnableSsl = _settings.EnableSsl;

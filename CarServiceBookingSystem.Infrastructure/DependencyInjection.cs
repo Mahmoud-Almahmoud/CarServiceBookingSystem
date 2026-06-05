@@ -44,15 +44,44 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
-        services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        //services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.Configure<BookingQuoteOptions>(configuration.GetSection("BookingQuote"));
         services.Configure<BookingAvailabilityOptions>(configuration.GetSection("BookingAvailability"));
-        services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
-        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        //services.Configure<StripeSettings>(configuration.GetSection("Stripe"));
+        //services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
+        //services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
 
-        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
-        var stripSettings = configuration.GetSection("StripeSettings").Get<StripeSettings>();
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection("Jwt"))
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Key), "Jwt:Key is required.")
+            .Validate(x => x.Key.Length >= 32, "Jwt:Key must be at least 32 characters.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Issuer), "Jwt:Issuer is required.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Audience), "Jwt:Audience is required.")
+            .ValidateOnStart();
+
+        services.AddOptions<EmailSettings>()
+            .Bind(configuration.GetSection("Email"))
+            .Validate(x => !string.IsNullOrWhiteSpace(x.SmtpServer), "Email:SmtpServer is required.")
+            .Validate(x => x.Port > 0, "Email:Port must be greater than 0.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Username), "Email:Username is required.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Password), "Email:Password is required.")
+            .ValidateOnStart();
+
+        services.AddOptions<StripeSettings>()
+            .Bind(configuration.GetSection("Stripe"))
+            .Validate(x => !string.IsNullOrWhiteSpace(x.SecretKey), "Stripe:SecretKey is required.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.WebhookSecret), "Stripe:WebhookSecret is required.")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Currency), "Stripe:Currency is required.")
+            .ValidateOnStart();
+
+        services.AddOptions<OpenRouteServiceOptions>()
+            .Bind(configuration.GetSection("OpenRouteService"))
+            .Validate(x => !string.IsNullOrWhiteSpace(x.ApiKey), "OpenRouteService:ApiKey is required.")
+            .ValidateOnStart();
+
+        var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>();
+        var stripSettings = configuration.GetSection("Stripe").Get<StripeSettings>();
 
         services.AddAuthentication(options =>
         {
@@ -72,7 +101,7 @@ public static class DependencyInjection
                 ValidAudience = jwtSettings.Audience,
 
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(jwtSettings.Secret))
+                    Encoding.UTF8.GetBytes(jwtSettings.Key))
             };
         });
 
@@ -96,7 +125,6 @@ public static class DependencyInjection
         //    client.BaseAddress = new Uri(options.RoutesBaseUrl);
         //});
 
-        services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
 
         services.AddHttpClient<IReverseGeocodingService, OpenRouteServiceReverseGeocodingService>((serviceProvider, client) =>
         {

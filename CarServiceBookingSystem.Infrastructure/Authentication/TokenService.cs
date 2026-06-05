@@ -41,13 +41,13 @@ public class TokenService : ITokenService
         }
 
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_jwtSettings.Secret));
+            Encoding.UTF8.GetBytes(_jwtSettings.Key));
 
         var creds = new SigningCredentials(
             key,
             SecurityAlgorithms.HmacSha256);
 
-        var expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
+        var expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,
