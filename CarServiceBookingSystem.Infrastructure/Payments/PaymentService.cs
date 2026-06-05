@@ -238,6 +238,75 @@ public class PaymentService : IPaymentService
         }
     }
 
+    public async Task<ApiResponse<PaymentResponse>> ConfirmFreeBookingAsync(
+    int bookingId,
+    CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return ApiResponse<PaymentResponse>.Fail("User is not authenticated.");
+        }
+
+        var booking = await _context.Bookings
+            .Include(x => x.Payment)
+            .FirstOrDefaultAsync(x =>
+                x.Id == bookingId &&
+                x.UserId == userId,
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return ApiResponse<PaymentResponse>.Fail("Booking not found.");
+        }
+
+        if (booking.TotalPrice > 0)
+        {
+            return ApiResponse<PaymentResponse>.Fail("This booking requires payment.");
+        }
+
+        if (booking.Status != BookingStatus.Pending)
+        {
+            return ApiResponse<PaymentResponse>.Fail("Only pending bookings can be confirmed as free.");
+        }
+
+        if (booking.Payment is not null)
+        {
+            return ApiResponse<PaymentResponse>.Fail("Payment already exists for this booking.");
+        }
+
+        var payment = new Payment
+        {
+            BookingId = booking.Id,
+            UserId = userId,
+            Amount = 0,
+            Currency = "aed",
+            Status = PaymentStatus.Succeeded,
+            PaymentIntentId = null,
+            StripeClientSecret = null,
+            PaidAt = DateTime.UtcNow
+        };
+
+        booking.Payment = payment;
+        booking.Status = BookingStatus.Confirmed;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        _context.Payments.Add(payment);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _bookingAssignmentService.AutoAssignTechnicianAsync(
+            booking.Id,
+            cancellationToken);
+
+        var response = await GetByBookingIdAsync(
+            booking.Id,
+            cancellationToken);
+
+        return response;
+    }
+
     public async Task<ApiResponse<string>> HandleStripeWebhookAsync(
         string json,
         string stripeSignature,

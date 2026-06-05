@@ -6,6 +6,9 @@ namespace CarServiceBookingSystem.Application.Interfaces;
 public interface IPaymentService
 {
     Task<ApiResponse<PaymentIntentResponse>> CreatePaymentIntentAsync(CreatePaymentIntentRequest request, CancellationToken cancellationToken = default);
+    Task<ApiResponse<PaymentResponse>> ConfirmFreeBookingAsync(
+    int bookingId,
+    CancellationToken cancellationToken = default);
     Task<ApiResponse<string>> HandleStripeWebhookAsync(string json,string stripeSignature,CancellationToken cancellationToken = default);
     Task<ApiResponse<PaymentResponse>> GetByIdAsync(
         int id,

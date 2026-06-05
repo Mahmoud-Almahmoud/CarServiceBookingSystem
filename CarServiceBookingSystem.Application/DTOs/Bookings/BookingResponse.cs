@@ -25,6 +25,9 @@ public class BookingResponse
     public decimal TravelFee { get; set; }
     public decimal TotalPrice { get; set; }
 
+    public bool RequiresPayment { get; set; }
+    public bool CanConfirmFreeBooking { get; set; }
+
     public decimal? CustomerLatitude { get; set; }
     public decimal? CustomerLongitude { get; set; }
     public string? CustomerCountryCode { get; set; }

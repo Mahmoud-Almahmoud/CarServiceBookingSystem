@@ -585,6 +585,9 @@ public class BookingService : IBookingService
             TravelFee = booking.TravelFee,
             TotalPrice = booking.TotalPrice,
 
+            RequiresPayment = booking.TotalPrice > 0,
+            CanConfirmFreeBooking = booking.TotalPrice <= 0 && booking.Status == BookingStatus.Pending,
+
             CustomerLatitude = booking.CustomerLatitude,
             CustomerLongitude = booking.CustomerLongitude,
             CustomerCountryCode = booking.CustomerCountryCode,

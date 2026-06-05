@@ -87,4 +87,25 @@ public class PaymentsController : ControllerBase
 
         return Ok(response);
     }
+
+    [Authorize]
+    [HttpPost("bookings/{bookingId:int}/confirm-free")]
+    public async Task<IActionResult> ConfirmFreeBooking(
+    int bookingId,
+    CancellationToken cancellationToken)
+    {
+        var response = await _paymentService.ConfirmFreeBookingAsync(
+            bookingId,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            if (response.Message == "Booking not found.")
+                return NotFound(response);
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }
