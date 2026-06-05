@@ -33,9 +33,13 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Create);
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Update);
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Delete);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Services.Manage);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.ViewAll);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.ViewMine);
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.UpdateStatus);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.Manage);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Bookings.Create);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.SecurityAudit.ViewAll);
 
@@ -61,6 +65,12 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.PermissionsCatalog.View);
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.BackgroundJobs.View);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Payments.View);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Payments.Create);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Payments.Manage);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Technicians.Manage);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Technicians.View);
 
         // User permissions
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Services.View);
@@ -73,6 +83,9 @@ public static class DbSeeder
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Cars.Update);
 
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.SecurityAudit.ViewMine);
+
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Payments.View);
+        await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Payments.Create);
     }
 
     private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager)

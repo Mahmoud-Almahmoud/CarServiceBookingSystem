@@ -1,6 +1,7 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Services;
 using CarServiceBookingSystem.UnitTests.TestHelpers;
 using FluentAssertions;
@@ -19,7 +20,7 @@ public class SecurityAuditServiceTests
 
         await service.LogAsync(
             userId: "user-id",
-            eventType: "LoginSuccess",
+            eventType: SecurityAuditEventType.LoginSucceeded,
             ipAddress: "127.0.0.1",
             device: "Chrome",
             details: "Test login");
@@ -29,7 +30,7 @@ public class SecurityAuditServiceTests
         var log = context.SecurityAuditLogs.First();
 
         log.UserId.Should().Be("user-id");
-        log.EventType.Should().Be("LoginSuccess");
+        log.EventType.Should().Be(SecurityAuditEventType.LoginSucceeded);
         log.IpAddress.Should().Be("127.0.0.1");
         log.Device.Should().Be("Chrome");
         log.Details.Should().Be("Test login");
@@ -44,14 +45,14 @@ public class SecurityAuditServiceTests
     new SecurityAuditLog
     {
         UserId = "user-1",
-        EventType = "LoginSuccess",
+        EventType = SecurityAuditEventType.LoginSucceeded,
         IpAddress = "127.0.0.1",
         Device = "Chrome"
     },
     new SecurityAuditLog
     {
         UserId = "user-2",
-        EventType = "LoginFailed",
+        EventType = SecurityAuditEventType.LoginFailed,
         IpAddress = "127.0.0.2",
         Device = "Firefox"
     });
@@ -80,7 +81,7 @@ public class SecurityAuditServiceTests
         var log1 = new SecurityAuditLog
         {
             UserId = "user-1",
-            EventType = "LoginSuccess",
+            EventType = SecurityAuditEventType.LoginSucceeded,
             IpAddress = "127.0.0.1",
             Device = "Chrome",
             IsDeleted = false
@@ -89,7 +90,7 @@ public class SecurityAuditServiceTests
         var log2 = new SecurityAuditLog
         {
             UserId = "user-2",
-            EventType = "PasswordChanged",
+            EventType = SecurityAuditEventType.PasswordChanged,
             IpAddress = "127.0.0.2",
             Device = "Firefox",
             IsDeleted = false

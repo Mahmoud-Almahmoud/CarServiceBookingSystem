@@ -1,65 +1,42 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.Application.Interfaces;
-using CarServiceBookingSystem.Domain.Enums;
-using CarServiceBookingSystem.Infrastructure.Payments;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Stripe;
-using Stripe.V2.Core;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/stripe/webhooks")]
 public class StripeWebhookController : ControllerBase
 {
-    private readonly IPaymentService _service;
-    private readonly StripeSettings _stripeSettings;
+    private readonly IPaymentService _paymentService;
 
-    public StripeWebhookController(
-        IPaymentService service,
-        IOptions<StripeSettings> stripeOptions)
+    public StripeWebhookController(IPaymentService paymentService)
     {
-        _service = service;
-        _stripeSettings = stripeOptions.Value;
+        _paymentService = paymentService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> Handle()
+    public async Task<IActionResult> Handle(CancellationToken cancellationToken)
     {
-        var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        var json = await new StreamReader(HttpContext.Request.Body)
+            .ReadToEndAsync(cancellationToken);
 
-        Stripe.Event stripeEvent;
+        var stripeSignature = Request.Headers["Stripe-Signature"].ToString();
 
-        try
+        if (string.IsNullOrWhiteSpace(stripeSignature))
         {
-            stripeEvent = EventUtility.ConstructEvent(
-                json,
-                Request.Headers["Stripe-Signature"],
-                _stripeSettings.WebhookSecret
-            );
-        }
-        catch (StripeException)
-        {
-            return BadRequest();
+            return BadRequest("Missing Stripe-Signature header.");
         }
 
-        var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+        var response = await _paymentService.HandleStripeWebhookAsync(
+            json,
+            stripeSignature,
+            cancellationToken);
 
-        var stripeWebhookDto = new StripeWebhookDto
+        if (!response.Success)
         {
-            EventId = stripeEvent.Id,
-            EventType = stripeEvent.Type,
-            PaymentIntentId = paymentIntent?.Id,
-            Amount = paymentIntent?.Amount ?? 0,
-            Currency = paymentIntent?.Currency
-        };
-        var result = await _service.HandleStripeWebhookAsync(stripeWebhookDto);
-        if (!result.Success && result.Data == WebhookProcessingStatus.Invalid)
-        {
-            return BadRequest(result.Message);
+            return BadRequest(response.Message);
         }
 
         return Ok();

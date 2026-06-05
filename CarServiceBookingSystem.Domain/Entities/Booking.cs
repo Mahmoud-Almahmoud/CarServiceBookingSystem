@@ -15,6 +15,9 @@ namespace CarServiceBookingSystem.Domain.Entities
         public int ServiceId { get; set; }
         public Service Service { get; set; }
 
+        public int? TechnicianId { get; set; }
+        public Technician? Technician { get; set; }
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
@@ -22,6 +25,47 @@ namespace CarServiceBookingSystem.Domain.Entities
 
         public BookingStatus Status { get; set; }
 
-        public Payment Payment { get; set; }
+        public DateTime? CancelledAt { get; set; }
+        public string? CancelledByUserId { get; set; }
+        public string? CancellationReason { get; set; }
+
+        public int? ServiceBranchId { get; set; }
+        public ServiceBranch? ServiceBranch { get; set; }
+
+        public decimal ServicePrice { get; set; }
+
+        public decimal TravelFee { get; set; }
+
+        public decimal TotalPrice { get; set; }
+
+        public decimal? CustomerLatitude { get; set; }
+
+        public decimal? CustomerLongitude { get; set; }
+
+        public string? CustomerCountryCode { get; set; }
+
+        public string? CustomerCity { get; set; }
+        public string? CustomerFormattedAddress { get; set; }
+
+        public double? DistanceKm { get; set; }
+
+        public int? EstimatedTravelTimeMinutes { get; set; }
+
+        public int? ServicePriceRuleId { get; set; }
+
+        public int? ServiceAreaRuleId { get; set; }
+
+        public Payment? Payment { get; set; }
+
+        public int? PromoCodeId { get; set; }
+        public PromoCode? PromoCode { get; set; }
+
+        public string? PromoCodeSnapshot { get; set; }
+
+        public decimal SubtotalPrice { get; set; }
+
+        public decimal DiscountAmount { get; set; }
+
+        public PromoCodeRedemption? PromoCodeRedemption { get; set; }
     }
 }

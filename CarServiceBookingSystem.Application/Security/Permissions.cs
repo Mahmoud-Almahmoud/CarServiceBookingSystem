@@ -8,6 +8,7 @@ public static class Permissions
         public const string Create = "Services.Create";
         public const string Update = "Services.Update";
         public const string Delete = "Services.Delete";
+        public const string Manage = "Services.Manage";
     }
 
     public static class Bookings
@@ -16,6 +17,14 @@ public static class Permissions
         public const string ViewAll = "Bookings.ViewAll";
         public const string Create = "Bookings.Create";
         public const string UpdateStatus = "Bookings.UpdateStatus";
+        public const string Manage = "Bookings.Manage";
+    }
+
+    public static class Payments
+    {
+        public const string View = "Payments.View";
+        public const string Create = "Payments.Create";
+        public const string Manage = "Payments.Manage";
     }
 
     public static class Cars
@@ -74,5 +83,11 @@ public static class Permissions
     public static class BackgroundJobs
     {
         public const string View = "BackgroundJobs.View";
+    }
+
+    public static class Technicians
+    {
+        public const string View = "Technicians.View";
+        public const string Manage = "Technicians.Manage";
     }
 }

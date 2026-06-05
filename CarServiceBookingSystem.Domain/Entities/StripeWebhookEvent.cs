@@ -1,11 +1,13 @@
-﻿public class StripeWebhookEvent
-{
-    public int Id { get; set; }
+﻿using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 
+public class StripeWebhookEvent : BaseEntity
+{
     public string StripeEventId { get; set; } = null!;
     public string EventType { get; set; } = null!;
-
+    public string Payload { get; set; } = null!;
+    public WebhookProcessingStatus Status { get; set; }
+    public string? ErrorMessage { get; set; }
     public bool Processed { get; set; }
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-    public DateTime? ProcessedAtUtc { get; set; }
+    public DateTime? ProcessedAt { get; set; }
 }

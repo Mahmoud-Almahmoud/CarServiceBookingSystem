@@ -46,8 +46,7 @@ public class ServiceService : IServiceService
             return ApiResponse<PagedResponse<ServiceResponse>>.Ok(cachedResult!);
         }
 
-        var query = _context.Services
-            .AsNoTracking();
+        var query = _context.Services.Where(x => x.IsActive).AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -83,7 +82,8 @@ public class ServiceService : IServiceService
                 Id = x.Id,
                 Name = x.Name,
                 Price = x.Price,
-                DurationInMinutes = x.DurationInMinutes
+                DurationInMinutes = x.DurationInMinutes,
+                Description = x.Description
             })
             .ToListAsync();
 
@@ -106,7 +106,9 @@ public class ServiceService : IServiceService
         {
             Name = request.Name,
             Price = request.Price,
-            DurationInMinutes = request.DurationInMinutes
+            DurationInMinutes = request.DurationInMinutes,
+            IsActive = true,
+            Description = request.Description,
         };
 
         await _context.Services.AddAsync(service);
@@ -135,6 +137,8 @@ public class ServiceService : IServiceService
         service.Name = request.Name;
         service.Price = request.Price;
         service.DurationInMinutes = request.DurationInMinutes;
+        service.IsActive = request.IsActive;
+        service.Description = request.Description;
 
         await _context.SaveChangesAsync();
         InvalidateServicesCache();

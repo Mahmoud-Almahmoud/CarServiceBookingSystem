@@ -16,7 +16,7 @@ public class CreateBookingRequestValidatorTests
         {
             CarId = 1,
             ServiceId = 1,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -32,7 +32,7 @@ public class CreateBookingRequestValidatorTests
         {
             CarId = 0,
             ServiceId = 1,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -49,7 +49,7 @@ public class CreateBookingRequestValidatorTests
         {
             CarId = 1,
             ServiceId = 0,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(1)
         };
 
@@ -66,7 +66,7 @@ public class CreateBookingRequestValidatorTests
         {
             CarId = 1,
             ServiceId = 1,
-            LocationType = ServiceLocationType.AtWorkshop,
+            LocationType = ServiceLocationType.OnStore,
             StartDate = DateTime.UtcNow.AddDays(-1)
         };
 

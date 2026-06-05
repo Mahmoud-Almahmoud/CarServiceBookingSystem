@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace CarServiceBookingSystem.API
 {
@@ -53,10 +54,17 @@ namespace CarServiceBookingSystem.API
             services.AddScoped<ValidationFilter<LoginTwoFactorRequest>>();
             services.AddScoped<ValidationFilter<DisableTwoFactorRequest>>();
             services.AddScoped<ValidationFilter<LoginRecoveryCodeRequest>>();
+            services.AddScoped<ValidationFilter<BookingQuoteRequest>>();
             services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
             services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
-            services.AddControllers();
+            services.AddControllers()
+                    .AddJsonOptions(options =>
+                    {
+                        options.JsonSerializerOptions.Converters.Add(
+                            new JsonStringEnumConverter());
+                    });
+
             services.AddApplication();
             if (environment.IsEnvironment("Testing"))
             {

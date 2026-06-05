@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +41,7 @@ public class SecurityAuditLogsIntegrationTests
         context.SecurityAuditLogs.Add(new SecurityAuditLog
         {
             UserId = "user-id",
-            EventType = "LoginSuccess",
+            EventType = SecurityAuditEventType.LoginSucceeded,
             IpAddress = "127.0.0.1",
             Device = "Chrome",
             Details = "Test audit log"
@@ -96,14 +97,14 @@ public class SecurityAuditLogsIntegrationTests
             new SecurityAuditLog
             {
                 UserId = userId,
-                EventType = "LoginSuccess",
+                EventType = SecurityAuditEventType.LoginSucceeded,
                 IpAddress = "127.0.0.1",
                 Device = "Chrome"
             },
             new SecurityAuditLog
             {
                 UserId = "another-user",
-                EventType = "PasswordChanged",
+                EventType = SecurityAuditEventType.PasswordChanged,
                 IpAddress = "127.0.0.2",
                 Device = "Firefox"
             });

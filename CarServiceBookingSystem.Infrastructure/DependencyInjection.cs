@@ -1,17 +1,21 @@
 ﻿using CarServiceBookingSystem.Application.Common.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
+using CarServiceBookingSystem.Application.Options;
 using CarServiceBookingSystem.Infrastructure.Authentication;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using CarServiceBookingSystem.Infrastructure.Services;
+using CarServiceBookingSystem.Infrastructure.Services.BackgroundJobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Stripe;
 using System.Text;
 
 namespace CarServiceBookingSystem.Infrastructure;
@@ -41,10 +45,14 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        services.Configure<BookingQuoteOptions>(configuration.GetSection("BookingQuote"));
+        services.Configure<BookingAvailabilityOptions>(configuration.GetSection("BookingAvailability"));
+        services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
+        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
 
-        var jwtSettings = configuration
-            .GetSection("JwtSettings")
-            .Get<JwtSettings>();
+        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
+        var stripSettings = configuration.GetSection("StripeSettings").Get<StripeSettings>();
 
         services.AddAuthentication(options =>
         {
@@ -68,20 +76,59 @@ public static class DependencyInjection
             };
         });
 
-        services.AddMemoryCache();
+        //services.Configure<GoogleMapsOptions>(configuration.GetSection("GoogleMaps"));
 
-        services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IAuthService, AuthService>();
+        //services.AddHttpClient<IReverseGeocodingService, GoogleReverseGeocodingService>((serviceProvider, client) =>
+        //{
+        //    var options = serviceProvider
+        //        .GetRequiredService<IOptions<GoogleMapsOptions>>()
+        //        .Value;
+
+        //    client.BaseAddress = new Uri(options.GeocodingBaseUrl);
+        //});
+
+        //services.AddHttpClient<ITravelEstimateService, GoogleRoutesTravelEstimateService>((serviceProvider, client) =>
+        //{
+        //    var options = serviceProvider
+        //        .GetRequiredService<IOptions<GoogleMapsOptions>>()
+        //        .Value;
+
+        //    client.BaseAddress = new Uri(options.RoutesBaseUrl);
+        //});
+
+        services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
+
+        services.AddHttpClient<IReverseGeocodingService, OpenRouteServiceReverseGeocodingService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<OpenRouteServiceOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
+        services.AddHttpClient<ITravelEstimateService, OpenRouteServiceTravelEstimateService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<OpenRouteServiceOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
+        StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
+
+        services.AddMemoryCache();
         services.AddHttpContextAccessor();
+
+        services.AddScoped<ITokenService, Authentication.TokenService>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ICarService, CarService>();
         services.AddScoped<ICarLookupService, CarLookupService>();
         services.AddScoped<IServiceService, ServiceService>();
         services.AddScoped<IBookingService, BookingService>();
-        services.Configure<StripeSettings>(configuration.GetSection("StripeSettings"));
-
-        services.AddScoped<IPaymentService, StripePaymentService>();
-        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IBackgroundJobService, HangfireBackgroundJobService>();
         services.AddScoped<ISecurityAuditService, SecurityAuditService>();
@@ -100,6 +147,21 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IBookingQuoteService, BookingQuoteService>();
+        //services.AddScoped<ITravelEstimateService, MockTravelEstimateService>();
+        services.AddScoped<IServicePricingService, ServicePricingService>();
+        services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
+        services.AddScoped<IServiceAreaService, ServiceAreaService>();
+        services.AddScoped<PaymentIntentService>();
+        services.AddScoped<IServiceBranchService, ServiceBranchService>();
+        services.AddScoped<ITechnicianService, TechnicianManagementService>();
+        services.AddScoped<IBookingAssignmentService, BookingAssignmentService>();
+        services.AddScoped<IPaymentRefundService, PaymentRefundService>();
+        services.AddScoped<ITechnicianScheduleService, TechnicianScheduleService>();
+        services.AddScoped<IBookingCleanupJob, BookingCleanupJob>();
+        services.AddScoped<ICancellationPolicyRuleService, CancellationPolicyRuleService>();
+        services.AddScoped<IPromoCodeService, PromoCodeService>();
+        services.AddScoped<IBookingReceiptService, BookingReceiptService>();
 
         return services;
     }

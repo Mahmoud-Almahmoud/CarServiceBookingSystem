@@ -18,8 +18,8 @@ public class StripeWebhookCleanupService : IStripeWebhookCleanupService
         await _context.StripeWebhookEvents
             .Where(x =>
                 x.Processed &&
-                x.ProcessedAtUtc != null &&
-                x.ProcessedAtUtc < cutoff)
+                x.ProcessedAt != null &&
+                x.ProcessedAt < cutoff)
             .ExecuteDeleteAsync();
     }
 }
