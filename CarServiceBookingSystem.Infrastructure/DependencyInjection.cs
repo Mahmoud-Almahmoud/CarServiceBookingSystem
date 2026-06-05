@@ -161,6 +161,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingCleanupJob, BookingCleanupJob>();
         services.AddScoped<ICancellationPolicyRuleService, CancellationPolicyRuleService>();
         services.AddScoped<IPromoCodeService, PromoCodeService>();
+        services.AddScoped<IBookingReceiptService, BookingReceiptService>();
 
         return services;
     }

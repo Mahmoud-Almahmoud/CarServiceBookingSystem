@@ -4,10 +4,8 @@ using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Security;
 using CarServiceBookingSystem.Domain.Enums;
-using CarServiceBookingSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace CarServiceBookingSystem.API.Controllers;
 
@@ -21,16 +19,19 @@ public class BookingsController : ControllerBase
     private readonly IBookingQuoteService _bookingQuoteService;
     private readonly IBookingAvailabilityService _bookingAvailabilityService;
     private readonly IBookingAssignmentService _bookingAssignmentService;
+    private readonly IBookingReceiptService _bookingReceiptService;
 
     public BookingsController(IBookingService bookingService, 
         IBookingQuoteService bookingQuoteService, 
         IBookingAvailabilityService bookingAvailabilityService,
-        IBookingAssignmentService bookingAssignmentService)
+        IBookingAssignmentService bookingAssignmentService,
+        IBookingReceiptService bookingReceiptService)
     {
         _bookingService = bookingService;
         _bookingQuoteService = bookingQuoteService;
         _bookingAvailabilityService = bookingAvailabilityService;
         _bookingAssignmentService = bookingAssignmentService;
+        _bookingReceiptService = bookingReceiptService;
     }
 
     [HttpPost]
@@ -194,6 +195,25 @@ public class BookingsController : ControllerBase
             }
 
             return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [HttpGet("{id:int}/receipt")]
+    public async Task<IActionResult> GetMyReceipt(
+    int id,
+    CancellationToken cancellationToken)
+    {
+
+        var response = await _bookingReceiptService.GetMyReceiptAsync(
+            id,
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return NotFound(response);
         }
 
         return Ok(response);
