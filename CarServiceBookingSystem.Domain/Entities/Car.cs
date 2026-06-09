@@ -4,7 +4,7 @@ using System.Text;
 
 namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class Car : BaseEntity
+    public class Car : BaseIdEntity
     {
         public string UserId { get; set; } = string.Empty;
 

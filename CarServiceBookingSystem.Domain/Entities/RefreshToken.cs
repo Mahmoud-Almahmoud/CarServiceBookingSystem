@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class RefreshToken : BaseEntity
+public class RefreshToken : BaseIdEntity
 {
     public string Token { get; set; } = string.Empty;
 

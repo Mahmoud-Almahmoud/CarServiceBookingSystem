@@ -68,6 +68,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<string>("Owner")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -79,7 +89,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("KeyHash")
                         .IsUnique();
 
-                    b.ToTable("ApiKeys");
+                    b.ToTable("ApiKeys", "security");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ApiKeysHistory", "audit");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Booking", b =>
@@ -155,6 +176,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<int>("LocationType")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int?>("PromoCodeId")
                         .HasColumnType("int");
 
@@ -221,7 +252,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TechnicianId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", "booking");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BookingsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BookingReview", b =>
@@ -257,6 +299,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsVisible")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
@@ -280,7 +332,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("Rating", "IsVisible", "CreatedAt");
 
-                    b.ToTable("BookingReviews");
+                    b.ToTable("BookingReviews", "booking");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BookingReviewsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchCapacityRule", b =>
@@ -318,6 +381,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("ServiceBranchId")
                         .HasColumnType("int");
 
@@ -334,7 +407,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceBranchId", "DayOfWeek", "StartTime", "EndTime", "IsActive");
 
-                    b.ToTable("BranchCapacityRules");
+                    b.ToTable("BranchCapacityRules", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BranchCapacityRulesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchClosure", b =>
@@ -372,6 +456,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsFullDay")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -399,7 +493,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceBranchId", "StartDate", "EndDate", "IsActive");
 
-                    b.ToTable("BranchClosures");
+                    b.ToTable("BranchClosures", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BranchClosuresHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchService", b =>
@@ -428,6 +533,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("ServiceBranchId")
                         .HasColumnType("int");
 
@@ -447,7 +562,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("ServiceBranchId", "ServiceId")
                         .IsUnique();
 
-                    b.ToTable("BranchServices");
+                    b.ToTable("BranchServices", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BranchServicesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.BranchWorkingHour", b =>
@@ -485,6 +611,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<TimeSpan>("OpenTime")
                         .HasColumnType("time");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("ServiceBranchId")
                         .HasColumnType("int");
 
@@ -499,7 +635,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("ServiceBranchId", "DayOfWeek")
                         .IsUnique();
 
-                    b.ToTable("BranchWorkingHours");
+                    b.ToTable("BranchWorkingHours", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("BranchWorkingHoursHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.CancellationPolicyRule", b =>
@@ -535,6 +682,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<decimal>("RefundPercentage")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
@@ -557,7 +714,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceId", "ServiceBranchId", "HoursBeforeStart", "IsActive");
 
-                    b.ToTable("CancellationPolicyRules");
+                    b.ToTable("CancellationPolicyRules", "booking");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CancellationPolicyRulesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Car", b =>
@@ -589,6 +757,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<string>("PlateNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -607,7 +785,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CarTrimId");
 
-                    b.ToTable("Cars");
+                    b.ToTable("Cars", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CarsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.CarBrand", b =>
@@ -637,6 +826,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -645,7 +844,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CarBrands");
+                    b.ToTable("CarBrands", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CarBrandsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.CarModel", b =>
@@ -678,6 +888,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -688,7 +908,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("BrandId");
 
-                    b.ToTable("CarModels");
+                    b.ToTable("CarModels", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CarModelsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.CarTrim", b =>
@@ -718,6 +949,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -731,7 +972,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("YearId");
 
-                    b.ToTable("CarTrims");
+                    b.ToTable("CarTrims", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CarTrimsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.CarYear", b =>
@@ -760,6 +1012,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<int>("ModelId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -773,7 +1035,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ModelId");
 
-                    b.ToTable("CarYears");
+                    b.ToTable("CarYears", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CarYearsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.IdempotencyKey", b =>
@@ -784,6 +1057,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Endpoint")
                         .IsRequired()
@@ -796,10 +1081,23 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
 
                     b.Property<string>("RequestHash")
                         .IsRequired()
@@ -811,6 +1109,12 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.Property<int?>("StatusCode")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -824,7 +1128,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("UserId", "Key")
                         .IsUnique();
 
-                    b.ToTable("IdempotencyKeys", (string)null);
+                    b.ToTable("IdempotencyKeys", "finance");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("IdempotencyKeysHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Payment", b =>
@@ -879,6 +1194,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<string>("RefundFailureReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -920,7 +1245,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[PaymentIntentId] IS NOT NULL");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", "finance");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("PaymentsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.PromoCode", b =>
@@ -982,6 +1318,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int?>("ServiceBranchId")
                         .HasColumnType("int");
 
@@ -1006,7 +1352,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceId", "ServiceBranchId", "IsActive");
 
-                    b.ToTable("PromoCodes");
+                    b.ToTable("PromoCodes", "finance");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("PromoCodesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.PromoCodeRedemption", b =>
@@ -1039,6 +1396,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("PromoCodeId")
                         .HasColumnType("int");
 
@@ -1062,7 +1429,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PromoCodeId", "UserId");
 
-                    b.ToTable("PromoCodeRedemptions");
+                    b.ToTable("PromoCodeRedemptions", "finance");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("PromoCodeRedemptionsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.RefreshToken", b =>
@@ -1141,7 +1519,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshToken", "security");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.SecurityAuditLog", b =>
@@ -1197,7 +1575,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SecurityAuditLogs");
+                    b.ToTable("SecurityAuditLog", "security");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Service", b =>
@@ -1236,6 +1614,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
@@ -1247,7 +1635,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Services");
+                    b.ToTable("Services", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ServicesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServiceAreaRule", b =>
@@ -1288,6 +1687,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("Priority")
                         .HasColumnType("int");
 
@@ -1306,7 +1715,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceId", "CountryCode", "City", "IsActive");
 
-                    b.ToTable("ServiceAreaRules");
+                    b.ToTable("ServiceAreaRules", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ServiceAreaRulesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServiceBranch", b =>
@@ -1358,6 +1778,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1370,7 +1800,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CountryCode", "City", "IsActive");
 
-                    b.ToTable("ServiceBranches");
+                    b.ToTable("ServiceBranches", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ServiceBranchesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.ServicePriceRule", b =>
@@ -1414,6 +1855,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
@@ -1440,7 +1891,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceId", "CarBrandId", "CarModelId", "CarTrimId", "CarYearId", "IsActive");
 
-                    b.ToTable("ServicePriceRules");
+                    b.ToTable("ServicePriceRules", "service");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ServicePriceRulesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Technician", b =>
@@ -1478,6 +1940,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
@@ -1497,7 +1969,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("ServiceBranchId", "IsActive");
 
-                    b.ToTable("Technicians");
+                    b.ToTable("Technicians", "provider");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("TechniciansHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianService", b =>
@@ -1523,6 +2006,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("ServiceId")
                         .HasColumnType("int");
 
@@ -1542,7 +2035,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("TechnicianId", "ServiceId")
                         .IsUnique();
 
-                    b.ToTable("TechnicianServices");
+                    b.ToTable("TechnicianServices", "provider");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("TechnicianServicesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianUnavailableDate", b =>
@@ -1577,6 +2081,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<string>("Reason")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -1600,7 +2114,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TechnicianId", "StartDate", "EndDate", "IsActive");
 
-                    b.ToTable("TechnicianUnavailableDates");
+                    b.ToTable("TechnicianUnavailableDates", "provider");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("TechnicianUnavailableDatesHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TechnicianWorkingHour", b =>
@@ -1638,6 +2163,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.Property<TimeSpan>("OpenTime")
                         .HasColumnType("time");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<int>("TechnicianId")
                         .HasColumnType("int");
 
@@ -1652,7 +2187,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("TechnicianId", "DayOfWeek")
                         .IsUnique();
 
-                    b.ToTable("TechnicianWorkingHours");
+                    b.ToTable("TechnicianWorkingHours", "provider");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("TechnicianWorkingHoursHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.TrustedDevice", b =>
@@ -1712,7 +2258,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TrustedDevices");
+                    b.ToTable("TrustedDevice", "security");
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Infrastructure.Identity.ApplicationUser", b =>
@@ -1781,7 +2327,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
-                    b.ToTable("AspNetUsers", (string)null);
+                    b.ToTable("User", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1808,7 +2354,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .HasDatabaseName("RoleNameIndex")
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
-                    b.ToTable("AspNetRoles", (string)null);
+                    b.ToTable("Roles", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1833,7 +2379,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetRoleClaims", (string)null);
+                    b.ToTable("RoleClaims", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -1858,7 +2404,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserClaims", (string)null);
+                    b.ToTable("UserClaims", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
@@ -1880,7 +2426,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserLogins", (string)null);
+                    b.ToTable("UserLogins", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
@@ -1895,7 +2441,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetUserRoles", (string)null);
+                    b.ToTable("UserRoles", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
@@ -1914,7 +2460,7 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
-                    b.ToTable("AspNetUserTokens", (string)null);
+                    b.ToTable("UserTokens", "security");
                 });
 
             modelBuilder.Entity("StripeWebhookEvent", b =>
@@ -1952,6 +2498,16 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodEnd")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodEnd");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("PeriodStart");
+
                     b.Property<bool>("Processed")
                         .HasColumnType("bit");
 
@@ -1977,7 +2533,18 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                     b.HasIndex("StripeEventId")
                         .IsUnique();
 
-                    b.ToTable("StripeWebhookEvents");
+                    b.ToTable("StripeWebhookEvents", "finance");
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("StripeWebhookEventsHistory", "auditing");
+                                ttb
+                                    .HasPeriodStart("PeriodStart")
+                                    .HasColumnName("PeriodStart");
+                                ttb
+                                    .HasPeriodEnd("PeriodEnd")
+                                    .HasColumnName("PeriodEnd");
+                            }));
                 });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.Booking", b =>

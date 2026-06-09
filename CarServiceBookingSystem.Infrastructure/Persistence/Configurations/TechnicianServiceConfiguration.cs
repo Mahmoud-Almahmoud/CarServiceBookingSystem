@@ -8,6 +8,14 @@ public class TechnicianServiceConfiguration : IEntityTypeConfiguration<Technicia
 {
     public void Configure(EntityTypeBuilder<TechnicianService> builder)
     {
+        var tableName = builder.Metadata.GetTableName();
+        builder.ToTable(tb => tb.IsTemporal(t =>
+        {
+            t.HasPeriodStart("PeriodStart");
+            t.HasPeriodEnd("PeriodEnd");
+            t.UseHistoryTable($"{tableName}History", schema: "auditing");
+        }));
+
         builder.HasKey(x => x.Id);
 
         builder.HasOne(x => x.Technician)

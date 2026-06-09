@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class TrustedDevice : BaseEntity
+public class TrustedDevice : BaseIdEntity
 {
     public string UserId { get; set; } = string.Empty;
 

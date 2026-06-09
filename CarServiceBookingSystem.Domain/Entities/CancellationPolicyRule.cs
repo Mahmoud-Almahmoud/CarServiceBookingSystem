@@ -2,7 +2,7 @@
 
 namespace CarServiceBookingSystem.Domain.Entities;
 
-public class CancellationPolicyRule : BaseEntity
+public class CancellationPolicyRule : BaseIdEntity
 {
     public int? ServiceId { get; set; }
     public Service? Service { get; set; }

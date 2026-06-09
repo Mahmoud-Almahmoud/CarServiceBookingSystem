@@ -2,7 +2,7 @@
 
 namespace CarServiceBookingSystem.Domain.Entities;
 
-public class SecurityAuditLog : BaseEntity
+public class SecurityAuditLog : BaseIdEntity
 {
     public string UserId { get; set; } = string.Empty;
 

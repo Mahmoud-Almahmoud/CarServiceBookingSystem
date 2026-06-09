@@ -31,7 +31,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<None Update="GeoLite2-City.mmdb">
+		<None Update="App_Data\GeoLite2-City.mmdb">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

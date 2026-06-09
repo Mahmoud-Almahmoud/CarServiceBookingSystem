@@ -8,6 +8,14 @@ public class TechnicianUnavailableDateConfiguration : IEntityTypeConfiguration<T
 {
     public void Configure(EntityTypeBuilder<TechnicianUnavailableDate> builder)
     {
+        var tableName = builder.Metadata.GetTableName();
+        builder.ToTable(tb => tb.IsTemporal(t =>
+        {
+            t.HasPeriodStart("PeriodStart");
+            t.HasPeriodEnd("PeriodEnd");
+            t.UseHistoryTable($"{tableName}History", schema: "auditing");
+        }));
+
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Reason)

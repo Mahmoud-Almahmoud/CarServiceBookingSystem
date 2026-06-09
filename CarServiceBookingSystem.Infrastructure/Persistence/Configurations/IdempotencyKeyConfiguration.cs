@@ -8,7 +8,13 @@ public class IdempotencyKeyConfiguration : IEntityTypeConfiguration<IdempotencyK
 {
     public void Configure(EntityTypeBuilder<IdempotencyKey> builder)
     {
-        builder.ToTable("IdempotencyKeys");
+        var tableName = builder.Metadata.GetTableName();
+        builder.ToTable(tb => tb.IsTemporal(t =>
+        {
+            t.HasPeriodStart("PeriodStart");
+            t.HasPeriodEnd("PeriodEnd");
+            t.UseHistoryTable($"{tableName}History", schema: "auditing");
+        }));
 
         builder.HasKey(x => x.Id);
 

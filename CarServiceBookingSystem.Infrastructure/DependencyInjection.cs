@@ -1,13 +1,35 @@
 ﻿using CarServiceBookingSystem.Application.Common.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IAuth;
 using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
+using CarServiceBookingSystem.Application.Interfaces.IBookings;
+using CarServiceBookingSystem.Application.Interfaces.ICars;
+using CarServiceBookingSystem.Application.Interfaces.IContext;
+using CarServiceBookingSystem.Application.Interfaces.IEmail;
+using CarServiceBookingSystem.Application.Interfaces.IGeoLocation;
+using CarServiceBookingSystem.Application.Interfaces.IPayments;
+using CarServiceBookingSystem.Application.Interfaces.ISecurity;
+using CarServiceBookingSystem.Application.Interfaces.IServices;
+using CarServiceBookingSystem.Application.Interfaces.ITechnicians;
+using CarServiceBookingSystem.Application.Interfaces.IUsers;
+using CarServiceBookingSystem.Application.Interfaces.IUtils;
 using CarServiceBookingSystem.Application.Options;
-using CarServiceBookingSystem.Infrastructure.Authentication;
+using CarServiceBookingSystem.Infrastructure.Context;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using CarServiceBookingSystem.Infrastructure.Services;
+using CarServiceBookingSystem.Infrastructure.Services.Auth;
 using CarServiceBookingSystem.Infrastructure.Services.BackgroundJobs;
+using CarServiceBookingSystem.Infrastructure.Services.Bookings;
+using CarServiceBookingSystem.Infrastructure.Services.Cars;
+using CarServiceBookingSystem.Infrastructure.Services.CarServices;
+using CarServiceBookingSystem.Infrastructure.Services.Email;
+using CarServiceBookingSystem.Infrastructure.Services.GeoLocation;
+using CarServiceBookingSystem.Infrastructure.Services.Payments;
+using CarServiceBookingSystem.Infrastructure.Services.Security;
+using CarServiceBookingSystem.Infrastructure.Services.Technicians;
+using CarServiceBookingSystem.Infrastructure.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +74,7 @@ public static class DependencyInjection
         services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
         //services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
 
-        services.AddOptions<JwtSettings>()
+        services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection("Jwt"))
             .Validate(x => !string.IsNullOrWhiteSpace(x.Key), "Jwt:Key is required.")
             .Validate(x => x.Key.Length >= 32, "Jwt:Key must be at least 32 characters.")
@@ -60,7 +82,7 @@ public static class DependencyInjection
             .Validate(x => !string.IsNullOrWhiteSpace(x.Audience), "Jwt:Audience is required.")
             .ValidateOnStart();
 
-        services.AddOptions<EmailSettings>()
+        services.AddOptions<EmailOptions>()
             .Bind(configuration.GetSection("Email"))
             .Validate(x => !string.IsNullOrWhiteSpace(x.SmtpServer), "Email:SmtpServer is required.")
             .Validate(x => x.Port > 0, "Email:Port must be greater than 0.")
@@ -68,7 +90,7 @@ public static class DependencyInjection
             .Validate(x => !string.IsNullOrWhiteSpace(x.Password), "Email:Password is required.")
             .ValidateOnStart();
 
-        services.AddOptions<StripeSettings>()
+        services.AddOptions<StripeOptions>()
             .Bind(configuration.GetSection("Stripe"))
             .Validate(x => !string.IsNullOrWhiteSpace(x.SecretKey), "Stripe:SecretKey is required.")
             .Validate(x => !string.IsNullOrWhiteSpace(x.WebhookSecret), "Stripe:WebhookSecret is required.")
@@ -80,8 +102,8 @@ public static class DependencyInjection
             .Validate(x => !string.IsNullOrWhiteSpace(x.ApiKey), "OpenRouteService:ApiKey is required.")
             .ValidateOnStart();
 
-        var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>();
-        var stripSettings = configuration.GetSection("Stripe").Get<StripeSettings>();
+        var jwtSettings = configuration.GetSection("Jwt").Get<JwtOptions>();
+        var stripSettings = configuration.GetSection("Stripe").Get<StripeOptions>();
 
         services.AddAuthentication(options =>
         {
@@ -149,7 +171,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddHttpContextAccessor();
 
-        services.AddScoped<ITokenService, Authentication.TokenService>();
+        services.AddScoped<ITokenService, Services.Authentication.TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ICarService, CarService>();

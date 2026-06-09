@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class BranchWorkingHour : BaseEntity
+    public class BranchWorkingHour : BaseIdEntity
     {
         public int ServiceBranchId { get; set; }
 

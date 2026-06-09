@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class ApiKey : BaseEntity
+public class ApiKey : BaseIdEntity
 {
     public string Name { get; set; } = string.Empty;
 

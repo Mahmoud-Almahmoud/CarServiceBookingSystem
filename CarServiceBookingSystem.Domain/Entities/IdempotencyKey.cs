@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class IdempotencyKey
+public class IdempotencyKey : BaseEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 

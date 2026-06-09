@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using CarServiceBookingSystem.API;
+using CarServiceBookingSystem.API.BackgroundJobs;
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.API.Middleware;
 using CarServiceBookingSystem.API.Middlewares;
@@ -124,7 +125,6 @@ if (!app.Environment.IsEnvironment("Testing"))
         .GetRequiredService<RoleManager<IdentityRole>>();
 
     await DbSeeder.SeedAsync(dbContext, userManager, roleManager);
-    await CarLookupSeeder.SeedAsync(dbContext);
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
