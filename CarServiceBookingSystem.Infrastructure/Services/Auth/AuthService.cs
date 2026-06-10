@@ -29,9 +29,8 @@ public class AuthService : IAuthService
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly ISecurityAuditService _securityAuditService;
     private readonly IQrCodeService _qrCodeService;
-    private readonly IGeoLocationService _geoLocationService;
     private readonly RoleManager<IdentityRole> _roleManager;
-    private readonly JwtOptions _jwtSettings;
+    private readonly JwtOptions _jwtOption;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -50,9 +49,8 @@ public class AuthService : IAuthService
         _qrCodeService = qrCodeService;
         _backgroundJobService = backgroundJobService;
         _securityAuditService = securityAuditService;
-        _geoLocationService = geoLocationService;
         _roleManager = roleManager;
-        _jwtSettings = jwtOptions.Value;
+        _jwtOption = jwtOptions.Value;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -81,29 +79,22 @@ public class AuthService : IAuthService
                 result.Errors.Select(x => x.Description).ToList());
         }
 
-        await _userManager.AddToRoleAsync(user, Roles.User);
+        await _userManager.AddToRoleAsync(user, Domain.Enums.Roles.User);
+
+        await _securityAuditService.LogAsync(
+           user.Id,
+           SecurityAuditEventType.UserRoleAdded,
+           "role added to user during registration");
 
         var roles = await _userManager.GetRolesAsync(user);
-        var refreshTokenU = _tokenService.GenerateRefreshToken();
-        
 
-        var refreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            CreatedByIp = GetIpAddress(),
-            Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash(),
-            TokenFamilyId = Guid.NewGuid().ToString()
-        };
+        var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
-        await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
+        await _securityAuditService.LogAsync(user.Id,
+            SecurityAuditEventType.Registration,
+            "User registered successfully");
+
         var permissions = await GetUserPermissionsAsync(user);
-
         var authUser = new AuthUser
         {
             Id = user.Id,
@@ -120,6 +111,9 @@ public class AuthService : IAuthService
         var confirmationLink = $"https://your-frontend-domain.com/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(emailConfirmationToken)}";
         _backgroundJobService.EnqueueEmail(user.Email!,"Confirm your email",$"Please confirm your email by clicking this link: {confirmationLink}");
 
+        await _securityAuditService.LogAsync(user.Id,
+            SecurityAuditEventType.EmailConfirmationResent,
+            "Confirmation email sent after registration");
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -127,7 +121,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             AccessToken = accessToken,
-            RefreshToken = refreshTokenU,
+            RefreshToken = refreshToken.Token,
             SessionId = refreshToken.Id,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
         });
@@ -143,13 +137,23 @@ public class AuthService : IAuthService
         }
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
+        
 
         if (!result.Succeeded)
         {
+            await _securityAuditService.LogAsync(
+                user.Id,
+                SecurityAuditEventType.EmailConfirmationFailed,
+                "Email confirmation failed");
+
             return ApiResponse<string>.Fail(
                 "Email confirmation failed",
                 result.Errors.Select(x => x.Description).ToList());
         }
+
+        await _securityAuditService.LogAsync(
+            user.Id, SecurityAuditEventType.EmailConfirmed, 
+            "User confirmed email successfully");
 
         return ApiResponse<string>.Ok("Email confirmed successfully");
     }
@@ -169,6 +173,12 @@ public class AuthService : IAuthService
         var confirmationLink =$"https://your-frontend-domain.com/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
         _backgroundJobService.EnqueueEmail(user.Email!, "Confirm your email", $"Please confirm your email by clicking this link: {confirmationLink}");
 
+        
+        await _securityAuditService.LogAsync(
+            user.Id, 
+            SecurityAuditEventType.EmailConfirmationResent, 
+            "Confirmation email resent");
+
         return ApiResponse<string>.Ok("Confirmation email sent successfully");
     }
     public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -183,9 +193,14 @@ public class AuthService : IAuthService
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
         var resetLink =
-            $"https://your-frontend-domain.com/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+            $"https://my-frontend-domain.com/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
 
         _backgroundJobService.EnqueueEmail(user.Email!,"Reset your password",$"Reset your password using this link: {resetLink}");
+
+        
+        await _securityAuditService.LogAsync(
+            user.Id, SecurityAuditEventType.PasswordResetRequested, 
+            "Password reset requested");
 
         return ApiResponse<string>.Ok("If the email exists, a reset password link has been sent.");
     }
@@ -209,6 +224,31 @@ public class AuthService : IAuthService
                 "Password reset failed",
                 result.Errors.Select(x => x.Description).ToList());
         }
+
+        
+        await _securityAuditService.LogAsync(
+            user.Id, 
+            SecurityAuditEventType.PasswordReset,
+            "Password reset successfully");
+
+        var trustedDevices = await _context.TrustedDevices.Where(x => x.UserId == user.Id && !x.IsRevoked).ToListAsync();
+        foreach (var device in trustedDevices)
+        {
+            device.IsRevoked = true;
+        }
+        await _context.SaveChangesAsync();
+
+        await _securityAuditService.LogAsync(
+            user.Id, 
+            SecurityAuditEventType.TrustedDevicesRevokedAll, 
+            "Trusted Devices Revoked All After Password Reset");
+
+        await RevokeAllUserRefreshTokensAsync(user.Id, "Password Reset");
+
+        await _securityAuditService.LogAsync(
+            user.Id,
+            SecurityAuditEventType.RefreshTokenFamilyRevoked,
+            "Refresh Tokens Revoked All After Password Reset");
 
         return ApiResponse<string>.Ok("Password reset successfully");
     }
@@ -244,8 +284,10 @@ public class AuthService : IAuthService
         {
             device.IsRevoked = true;
         }
-        var geo = await GetGeoLocationAsync();
-        await _securityAuditService.LogAsync(user.Id, SecurityAuditEventType.TrustedDevicesRevoked, GetIpAddress(), GetDevice(), geo.Country, geo.City, "Trusted Devices Revoked After Password Change");
+        
+        await _securityAuditService.LogAsync(user.Id,
+            SecurityAuditEventType.TrustedDevicesRevokedAll,
+            "Trusted Devices Revoked All After Password Change");
 
         var currentSessionId = GetCurrentSessionId();
         var activeTokens = await _context.RefreshTokens
@@ -263,14 +305,14 @@ public class AuthService : IAuthService
 
         _backgroundJobService.EnqueueEmail(user.Email!, "Password Changed",
             "Your password was changed successfully. If this was not you, please contact support immediately.");
-        await _securityAuditService.LogAsync(user.Id, SecurityAuditEventType.PasswordChanged, GetIpAddress(), GetDevice(), geo.Country, geo.City, "Password changed successfully");
+        await _securityAuditService.LogAsync(user.Id, 
+            SecurityAuditEventType.PasswordChanged,
+            "Password changed successfully");
         return ApiResponse<string>.Ok("Password changed successfully");
     }
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        var geo = await GetGeoLocationAsync();
-
         var user = await _userManager.FindByEmailAsync(request.Email);
 
         if (user == null)
@@ -291,7 +333,9 @@ public class AuthService : IAuthService
         if (!validPassword)
         {
             await _userManager.AccessFailedAsync(user);
-            await _securityAuditService.LogAsync(user.Id, SecurityAuditEventType.LoginFailed, GetIpAddress(), GetDevice(), geo.Country, geo.City, "Invalid password");
+            await _securityAuditService.LogAsync(user.Id, 
+                SecurityAuditEventType.LoginFailed,
+                "Invalid password");
             return ApiResponse<AuthResponse>.Fail("Invalid credentials");
         }
         await _userManager.ResetAccessFailedCountAsync(user);
@@ -303,10 +347,6 @@ public class AuthService : IAuthService
             await _securityAuditService.LogAsync(
                 user.Id,
                 SecurityAuditEventType.SuspiciousLogin,
-                GetIpAddress(),
-                GetDevice(),
-                geo.Country,
-                geo.City,
                 "Login from a new IP address or device");
 
             _backgroundJobService.EnqueueEmail(user.Email!, "New Login Detected",
@@ -338,23 +378,8 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
 
-        var refreshTokenU = _tokenService.GenerateRefreshToken();
+        var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
-        var refreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            CreatedByIp = GetIpAddress(),
-            Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash(),
-            TokenFamilyId = Guid.NewGuid().ToString()
-        };
-
-        await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
         var permissions = await GetUserPermissionsAsync(user);
 
         var authUser = new AuthUser
@@ -368,7 +393,8 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        await _securityAuditService.LogAsync(user.Id, SecurityAuditEventType.LoginSucceeded, GetIpAddress(), GetDevice(), geo.Country, geo.City, null);
+        await _securityAuditService.LogAsync(user.Id,
+            SecurityAuditEventType.LoginSucceeded,null);
 
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
@@ -377,7 +403,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             AccessToken = accessToken,
-            RefreshToken = refreshTokenU,
+            RefreshToken = refreshToken.Token,
             SessionId = refreshToken.Id,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
         });
@@ -387,12 +413,15 @@ public class AuthService : IAuthService
     {
         var hashedToken = TokenHasher.Hash(request.RefreshToken);
         var storedToken = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Token == hashedToken);
-        var geo = await GetGeoLocationAsync();
+        
 
         if (storedToken != null && storedToken.IsRevoked)
         {
             await RevokeRefreshTokenFamilyAsync(storedToken.TokenFamilyId,"Refresh token reuse detected");
-            await _securityAuditService.LogAsync(storedToken.UserId, SecurityAuditEventType.SessionsRevoked, GetIpAddress(), GetDevice(), geo.Country, geo.City, "Refresh token reuse detected");
+            await _securityAuditService.LogAsync(
+                storedToken.UserId, 
+                SecurityAuditEventType.RefreshTokenFamilyRevoked,
+                "Refresh token reuse detected");
             return ApiResponse<AuthResponse>.Fail("Refresh token reuse detected. All sessions have been revoked.");
         }
 
@@ -422,41 +451,20 @@ public class AuthService : IAuthService
 
             await _securityAuditService.LogAsync(
                 storedToken.UserId,
-                SecurityAuditEventType.SessionRevoked,
-                GetIpAddress(),
-                GetDevice(),
-                geo.Country,
-                geo.City,
-                "Refresh token used from a different device fingerprint");
+                SecurityAuditEventType.RefreshTokenRevoked,
+                $"Refresh token with id ({storedToken.Id}) used from a different device fingerprint");
 
             return ApiResponse<AuthResponse>.Fail(
                 "Refresh token is no longer valid from this device.");
         }
-
         
-        var refreshTokenU = _tokenService.GenerateRefreshToken();
-        
-
         var roles = await _userManager.GetRolesAsync(user);
-        var newRefreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = TokenHasher.Hash(refreshTokenU),
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            CreatedByIp = GetIpAddress(),
-            Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash(),
-            TokenFamilyId = storedToken.TokenFamilyId
-        };
 
-        await _context.RefreshTokens.AddAsync(newRefreshToken);
-        await _context.SaveChangesAsync();
+        var newRefreshToken = await CreateRefreshTokenAsync(user.Id, storedToken.TokenFamilyId);
 
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
-        storedToken.ReplacedByToken = refreshTokenU;
+        storedToken.ReplacedByToken = newRefreshToken.Token;
         storedToken.RevokedAt = DateTime.UtcNow;
         storedToken.RevokedByIp = GetIpAddress();
         storedToken.RevocationReason = "Token rotated";
@@ -476,14 +484,19 @@ public class AuthService : IAuthService
         };
 
         var newAccessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        
+
+        await _securityAuditService.LogAsync(
+               storedToken.UserId,
+               SecurityAuditEventType.RefreshTokenUsed,
+               $"Refresh token with id ({storedToken.Id}) used and replaced");
+
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
             UserId = user.Id,
             Email = user.Email!,
             FullName = user.FullName,
             AccessToken = newAccessToken,
-            RefreshToken = refreshTokenU,
+            RefreshToken = newRefreshToken.Token,
             SessionId = newRefreshToken.Id,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
         }, "Token refreshed successfully");
@@ -492,7 +505,7 @@ public class AuthService : IAuthService
     public async Task<ApiResponse<string>> LogoutAsync(LogoutRequest request)
     {
         var currentSessionId = GetCurrentSessionId();
-        var geo = await GetGeoLocationAsync();
+        
 
         RefreshToken? storedToken = null;
 
@@ -525,6 +538,10 @@ public class AuthService : IAuthService
         storedToken.RevocationReason = "Logout";
 
         await _context.SaveChangesAsync();
+        await _securityAuditService.LogAsync(
+            storedToken.UserId,
+            SecurityAuditEventType.Logout,
+            $"User logged out from session with id ({storedToken.Id})");
         return ApiResponse<string>.Ok("Logged out", "Logout successful");
     }
 
@@ -550,6 +567,12 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
+
+        
+        await _securityAuditService.LogAsync(
+           userId,
+           SecurityAuditEventType.LogoutAllSessions,
+           $"User logged out from all sessions");
 
         return ApiResponse<string>.Ok("Logged out from all devices");
     }
@@ -616,6 +639,12 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync();
 
+        
+        await _securityAuditService.LogAsync(
+           userId,
+           SecurityAuditEventType.SessionRevoked,
+           $"User revoked session with id ({token.Id})");
+
         return ApiResponse<string>.Ok("Session revoked successfully");
     }
 
@@ -677,6 +706,12 @@ public class AuthService : IAuthService
 
         await _userManager.SetTwoFactorEnabledAsync(user, true);
 
+        
+        await _securityAuditService.LogAsync(
+           userId,
+           SecurityAuditEventType.TwoFactorEnabled,
+           $"User enabled two-factor authentication");
+
         return ApiResponse<string>.Ok("Two-factor authentication enabled successfully");
     }
     public async Task<ApiResponse<AuthResponse>> LoginWithTwoFactorAsync(LoginTwoFactorRequest request)
@@ -697,8 +732,16 @@ public class AuthService : IAuthService
             _userManager.Options.Tokens.AuthenticatorTokenProvider,
             code);
 
+        
         if (!isValid)
+        {
+            await _securityAuditService.LogAsync(
+               user.Id,
+               SecurityAuditEventType.TwoFactorLoginFailed,
+               $"User failed to log in with two-factor authentication");
+
             return ApiResponse<AuthResponse>.Fail("Invalid verification code");
+        }
 
         string? trustedDeviceToken = null;
 
@@ -712,23 +755,7 @@ public class AuthService : IAuthService
             trustedDeviceToken = await CreateTrustedDeviceAsync(user);
         }
 
-        var rawRefreshToken = _tokenService.GenerateRefreshToken();
-
-        var refreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = TokenHasher.Hash(rawRefreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            CreatedByIp = GetIpAddress(),
-            Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash(),
-            TokenFamilyId = Guid.NewGuid().ToString()
-        };
-
-        await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
+        var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await GetUserPermissionsAsync(user);
@@ -744,12 +771,11 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        var geo = await GetGeoLocationAsync();
+
         await _securityAuditService.LogAsync(
             user.Id,
-            SecurityAuditEventType.TwoFactorLogin,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            SecurityAuditEventType.TwoFactorLoginSucceeded,
+            null);
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -757,7 +783,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             AccessToken = accessToken,
-            RefreshToken = rawRefreshToken,
+            RefreshToken = refreshToken.Token,
             SessionId = refreshToken.Id,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60),
             TrustedDeviceToken = trustedDeviceToken
@@ -789,16 +815,24 @@ public class AuthService : IAuthService
             _userManager.Options.Tokens.AuthenticatorTokenProvider,
             code);
 
+        
+
         if (!isValid)
+        {
+            await _securityAuditService.LogAsync(
+               user.Id,
+               SecurityAuditEventType.TwoFactorLoginFailed,
+               $"User failed to verify two-factor code");
+
             return ApiResponse<string>.Fail("Invalid verification code");
+        }
 
         await _userManager.SetTwoFactorEnabledAsync(user, false);
-        var geo = await GetGeoLocationAsync();
+        
         await _securityAuditService.LogAsync(
             user.Id,
             SecurityAuditEventType.TwoFactorDisabled,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            null);
 
         return ApiResponse<string>.Ok("Two-factor authentication disabled successfully");
     }
@@ -827,12 +861,12 @@ public class AuthService : IAuthService
 
         var codes = await _userManager
             .GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-        var geo = await GetGeoLocationAsync();
+
+        
         await _securityAuditService.LogAsync(
             user.Id,
             SecurityAuditEventType.TwoFactorRecoveryCodesGenerated,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            "user generated new two-factor recovery codes");
 
         return ApiResponse<RecoveryCodesResponse>.Ok(
             new RecoveryCodesResponse
@@ -852,29 +886,20 @@ public class AuthService : IAuthService
         var result = await _userManager
             .RedeemTwoFactorRecoveryCodeAsync(user, request.RecoveryCode);
 
+        
+
         if (!result.Succeeded)
         {
+            await _securityAuditService.LogAsync(
+               user.Id,
+               SecurityAuditEventType.TwoFactorLoginFailed,
+               $"User failed to log in with recovery code");
+
             return ApiResponse<AuthResponse>
                 .Fail("Invalid recovery code");
         }
 
-        var rawRefreshToken = _tokenService.GenerateRefreshToken();
-
-        var refreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = TokenHasher.Hash(rawRefreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            CreatedByIp = GetIpAddress(),
-            Device = GetDevice(),
-            DeviceFingerprintHash = GetDeviceFingerprintHash(),
-            TokenFamilyId = Guid.NewGuid().ToString()
-        };
-
-        await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
+        var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await GetUserPermissionsAsync(user);
@@ -889,12 +914,11 @@ public class AuthService : IAuthService
         };
 
         var accessToken = await _tokenService.CreateAccessTokenAsync(authUser);
-        var geo = await GetGeoLocationAsync();
+        
         await _securityAuditService.LogAsync(
             user.Id,
-            SecurityAuditEventType.TwoFactorLogin,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            SecurityAuditEventType.TwoFactorLoginSucceeded,
+            null);
 
         return ApiResponse<AuthResponse>.Ok(new AuthResponse
         {
@@ -902,7 +926,7 @@ public class AuthService : IAuthService
             Email = user.Email!,
             FullName = user.FullName,
             AccessToken = accessToken,
-            RefreshToken = rawRefreshToken,
+            RefreshToken = refreshToken.Token,
             SessionId = refreshToken.Id,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(60)
         });
@@ -921,8 +945,7 @@ public class AuthService : IAuthService
         return ApiResponse<byte[]>.Ok(qrBytes);
     }
 
-    public async Task<ApiResponse<List<TrustedDeviceResponse>>>
-    GetTrustedDevicesAsync()
+    public async Task<ApiResponse<List<TrustedDeviceResponse>>>GetTrustedDevicesAsync()
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -978,19 +1001,18 @@ public class AuthService : IAuthService
         device.IsRevoked = true;
 
         await _context.SaveChangesAsync();
-        var geo = await GetGeoLocationAsync();
+
+        
         await _securityAuditService.LogAsync(
             userId,
-            SecurityAuditEventType.TrustedDeviceRevoked,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            SecurityAuditEventType.TrustedDeviceRevoked, 
+            $"user revoked trusted device with ID: {device.Id}");
 
         return ApiResponse<string>
             .Ok("Trusted device revoked successfully");
     }
 
-    public async Task<ApiResponse<string>>
-    RevokeAllTrustedDevicesAsync()
+    public async Task<ApiResponse<string>>RevokeAllTrustedDevicesAsync()
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -1012,12 +1034,12 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
-        var geo = await GetGeoLocationAsync();
+
+        
         await _securityAuditService.LogAsync(
             userId,
-            SecurityAuditEventType.TrustedDevicesRevoked,
-            GetIpAddress(),
-            GetDevice(), geo.Country, geo.City, null);
+            SecurityAuditEventType.TrustedDevicesRevokedAll,
+            "user revoked all trusted devices");
 
         return ApiResponse<string>
             .Ok("All trusted devices revoked successfully");
@@ -1111,11 +1133,6 @@ public class AuthService : IAuthService
         return !hasPreviousLoginFromSameDevice;
     }
 
-    private async Task<GeoLocationResult> GetGeoLocationAsync()
-    {
-        return await _geoLocationService.GetLocationAsync(GetIpAddress());
-    }
-
     private string? GetDeviceFingerprintHash()
     {
         var fingerprint = _httpContextAccessor.HttpContext?
@@ -1132,6 +1149,23 @@ public class AuthService : IAuthService
     {
         var tokens = await _context.RefreshTokens
             .Where(x => x.TokenFamilyId == tokenFamilyId && !x.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in tokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedByIp = GetIpAddress();
+            token.RevocationReason = reason;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task RevokeAllUserRefreshTokensAsync(string userId, string reason)
+    {
+        var tokens = await _context.RefreshTokens
+            .Where(x => x.UserId == userId && !x.IsRevoked)
             .ToListAsync();
 
         foreach (var token in tokens)
@@ -1168,5 +1202,37 @@ public class AuthService : IAuthService
         }
 
         return permissions.Distinct().ToList();
+    }
+
+    private async Task<RefreshTokenResponse> CreateRefreshTokenAsync(string userId, string? tokenFamilyId = null)
+    {
+        var refreshTokenRaw = _tokenService.GenerateRefreshToken();
+        var refreshToken = new RefreshToken
+        {
+            UserId = userId,
+            Token = TokenHasher.Hash(refreshTokenRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtOption.RefreshTokenExpirationDays),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = GetIpAddress(),
+            Device = GetDevice(),
+            DeviceFingerprintHash = GetDeviceFingerprintHash(),
+            TokenFamilyId = tokenFamilyId ?? Guid.NewGuid().ToString()
+        };
+
+        await _context.RefreshTokens.AddAsync(refreshToken);
+        await _context.SaveChangesAsync();
+
+        return new RefreshTokenResponse
+        {
+            Id = refreshToken.Id,
+            Token = refreshTokenRaw
+        };
+    }
+
+    private sealed class RefreshTokenResponse
+    {
+        public int Id { get; set; }
+        public string Token { get; set; } = string.Empty;  
     }
 }

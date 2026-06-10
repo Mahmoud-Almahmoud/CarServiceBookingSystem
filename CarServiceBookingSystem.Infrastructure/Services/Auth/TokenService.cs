@@ -12,11 +12,11 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Authentication;
 
 public class TokenService : ITokenService
 {
-    private readonly JwtOptions _jwtSettings;
+    private readonly JwtOptions _jwtOption;
 
     public TokenService(IOptions<JwtOptions> jwtOptions)
     {
-        _jwtSettings = jwtOptions.Value;
+        _jwtOption = jwtOptions.Value;
     }
 
     public async Task<string> CreateAccessTokenAsync(AuthUser user)
@@ -42,17 +42,17 @@ public class TokenService : ITokenService
         }
 
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_jwtSettings.Key));
+            Encoding.UTF8.GetBytes(_jwtOption.Key));
 
         var creds = new SigningCredentials(
             key,
             SecurityAlgorithms.HmacSha256);
 
-        var expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var expires = DateTime.UtcNow.AddMinutes(_jwtOption.AccessTokenExpirationMinutes);
 
         var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
+            issuer: _jwtOption.Issuer,
+            audience: _jwtOption.Audience,
             claims: claims,
             expires: expires,
             signingCredentials: creds);
@@ -65,4 +65,5 @@ public class TokenService : ITokenService
     {
         return Guid.NewGuid().ToString();
     }
+
 }

@@ -1,7 +1,10 @@
 ﻿using CarServiceBookingSystem.Application.Common;
 using CarServiceBookingSystem.Application.DTOs.ApiKeys;
+using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces.IAuth;
+using CarServiceBookingSystem.Application.Interfaces.IContext;
 using CarServiceBookingSystem.Domain.Entities;
+using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using CarServiceBookingSystem.Infrastructure.Utils.Auth;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +15,14 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Auth;
 public class ApiKeyService : IApiKeyService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ISecurityAuditService _securityAuditService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public ApiKeyService(ApplicationDbContext context)
+    public ApiKeyService(ApplicationDbContext context, ISecurityAuditService securityAuditService, ICurrentUserService currentUserService)
     {
         _context = context;
+        _securityAuditService = securityAuditService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<ApiKeyCreatedResponse>> CreateAsync(
@@ -23,6 +30,11 @@ public class ApiKeyService : IApiKeyService
         string? owner,
         DateTime? expiresAt)
     {
+
+        var userId = _currentUserService.UserId;
+        if (userId == null) {
+            return ApiResponse<ApiKeyCreatedResponse>.Fail("Unauthorized");
+        }
         var rawKey = $"csbs_{Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))}";
         var keyHash = TokenHasher.Hash(rawKey);
 
@@ -38,6 +50,8 @@ public class ApiKeyService : IApiKeyService
         await _context.ApiKeys.AddAsync(apiKey);
         await _context.SaveChangesAsync();
 
+        await _securityAuditService.LogAsync(userId, SecurityAuditEventType.ApiKeyCreated, "API key created");
+
         return ApiResponse<ApiKeyCreatedResponse>.Ok(new ApiKeyCreatedResponse
         {
             Id = apiKey.Id,
@@ -48,6 +62,12 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<bool> ValidateAsync(string rawKey, string? ipAddress)
     {
+        var userId = _currentUserService.UserId;
+        if (userId == null)
+        {
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(rawKey))
             return false;
 
@@ -60,10 +80,16 @@ public class ApiKeyService : IApiKeyService
                 (x.ExpiresAt == null || x.ExpiresAt > DateTime.UtcNow));
 
         if (apiKey == null)
+        {
+            await _securityAuditService.LogAsync(userId, SecurityAuditEventType.ApiKeyValidationFailed, "API key validation failed");
             return false;
+        }
+            
 
         apiKey.LastUsedAt = DateTime.UtcNow;
         apiKey.LastUsedIp = ipAddress;
+
+        await _securityAuditService.LogAsync(userId, SecurityAuditEventType.ApiKeyUsed, "API key validation succeeded");
 
         await _context.SaveChangesAsync();
 
@@ -72,6 +98,12 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<ApiResponse<string>> RevokeAsync(int id)
     {
+        var userId = _currentUserService.UserId;
+        if (userId == null)
+        {
+            return ApiResponse<string>.Fail("Unauthorized");
+        }
+
         var apiKey = await _context.ApiKeys.FindAsync(id);
 
         if (apiKey == null)
@@ -81,6 +113,7 @@ public class ApiKeyService : IApiKeyService
 
         await _context.SaveChangesAsync();
 
+        await _securityAuditService.LogAsync(userId, SecurityAuditEventType.ApiKeyRevoked, "API key revoked");
         return ApiResponse<string>.Ok("API key revoked successfully");
     }
 
