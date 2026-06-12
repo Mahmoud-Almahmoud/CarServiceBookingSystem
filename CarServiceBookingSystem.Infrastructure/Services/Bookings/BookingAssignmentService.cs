@@ -1,19 +1,27 @@
 ﻿using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.Constants;
 using CarServiceBookingSystem.Application.DTOs.Bookings;
+using CarServiceBookingSystem.Application.DTOs.Notifications;
 using CarServiceBookingSystem.Application.Interfaces.IBookings;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CarServiceBookingSystem.Infrastructure.Services.Bookings;
 
 public class BookingAssignmentService : IBookingAssignmentService
 {
     private readonly ApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<BookingAssignmentService> _logger;
 
-    public BookingAssignmentService(ApplicationDbContext context)
+    public BookingAssignmentService(ApplicationDbContext context, INotificationService notificationService, ILogger<BookingAssignmentService> logger)
     {
         _context = context;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<BookingTechnicianAssignmentResponse>> AssignTechnicianAsync(
@@ -135,6 +143,17 @@ public class BookingAssignmentService : IBookingAssignmentService
             EndDate = booking.EndDate,
             BookingStatus = booking.Status.ToString()
         };
+
+        await NotifyUserAsync(
+                booking.UserId,
+                "Technician assigned",
+                $"A technician has been assigned to your booking #{booking.Id}.",
+                NotificationType.BookingAssigned,
+                NotificationSeverity.Success,
+                NotificationEntityTypes.Booking,
+                booking.Id,
+                $"/bookings/{booking.Id}",
+                cancellationToken);
 
         return ApiResponse<BookingTechnicianAssignmentResponse>.Ok(response);
     }
@@ -376,5 +395,41 @@ public class BookingAssignmentService : IBookingAssignmentService
     {
         public Domain.Entities.Technician Technician { get; set; } = null!;
         public int SameDayWorkload { get; set; }
+    }
+
+    private async Task NotifyUserAsync(
+   string userId,
+   string title,
+   string message,
+   NotificationType type,
+   NotificationSeverity severity,
+   string? entityType,
+   int? entityId,
+   string? actionUrl,
+   CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _notificationService.CreateAsync(
+            new CreateNotificationRequest
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                Type = type,
+                Severity = severity,
+                EntityType = entityType,
+                EntityId = entityId,
+                ActionUrl = actionUrl
+            },
+            cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to create notification for UserId {UserId}, Type {NotificationType}, EntityType {EntityType}, EntityId {EntityId}",
+                userId, type, entityType, entityId);
+        }
     }
 }
