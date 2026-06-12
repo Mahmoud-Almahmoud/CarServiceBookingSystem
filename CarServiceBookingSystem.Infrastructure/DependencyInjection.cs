@@ -7,6 +7,7 @@ using CarServiceBookingSystem.Application.Interfaces.ICars;
 using CarServiceBookingSystem.Application.Interfaces.IContext;
 using CarServiceBookingSystem.Application.Interfaces.IEmail;
 using CarServiceBookingSystem.Application.Interfaces.IGeoLocation;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Application.Interfaces.IPayments;
 using CarServiceBookingSystem.Application.Interfaces.ISecurity;
 using CarServiceBookingSystem.Application.Interfaces.IServices;
@@ -26,6 +27,7 @@ using CarServiceBookingSystem.Infrastructure.Services.Cars;
 using CarServiceBookingSystem.Infrastructure.Services.CarServices;
 using CarServiceBookingSystem.Infrastructure.Services.Email;
 using CarServiceBookingSystem.Infrastructure.Services.GeoLocation;
+using CarServiceBookingSystem.Infrastructure.Services.Notifications;
 using CarServiceBookingSystem.Infrastructure.Services.Payments;
 using CarServiceBookingSystem.Infrastructure.Services.Security;
 using CarServiceBookingSystem.Infrastructure.Services.Technicians;
@@ -213,6 +215,7 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IBookingReceiptService, BookingReceiptService>();
         services.AddScoped<IBookingReviewService, BookingReviewService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }
