@@ -90,4 +90,10 @@ public static class Permissions
         public const string View = "Technicians.View";
         public const string Manage = "Technicians.Manage";
     }
+
+    public static class Notifications
+    {
+        public const string Send = "Notifications.Send";
+        public const string ViewAll = "Notifications.ViewAll";
+    }
 }
