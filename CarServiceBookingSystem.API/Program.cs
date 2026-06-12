@@ -2,6 +2,7 @@ using Asp.Versioning;
 using CarServiceBookingSystem.API;
 using CarServiceBookingSystem.API.BackgroundJobs;
 using CarServiceBookingSystem.API.Filters;
+using CarServiceBookingSystem.API.Hubs;
 using CarServiceBookingSystem.API.Middleware;
 using CarServiceBookingSystem.API.Middlewares;
 using CarServiceBookingSystem.Application.Interfaces;
@@ -80,7 +81,8 @@ builder.Services.AddCors(options =>
                 "https://csbs-app.mahmoudev.com",
                 "http://csbs-app.mahmoudev.com")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 var app = builder.Build();
@@ -165,6 +167,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     });
     RecurringJobsScheduler.RegisterRecurringJobs();
 }
+app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapControllers();
 app.MapHealthChecks("/health");
 

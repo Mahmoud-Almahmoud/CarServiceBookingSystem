@@ -1,15 +1,19 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.API.Auth;
 using CarServiceBookingSystem.API.Filters;
+using CarServiceBookingSystem.API.Services;
+using CarServiceBookingSystem.API.SignalR;
 using CarServiceBookingSystem.Application;
 using CarServiceBookingSystem.Application.DTOs.Auth;
 using CarServiceBookingSystem.Application.DTOs.Bookings;
 using CarServiceBookingSystem.Application.DTOs.Cars;
 using CarServiceBookingSystem.Application.DTOs.Services;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Infrastructure;
 using FluentValidation;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -68,17 +72,20 @@ namespace CarServiceBookingSystem.API
             services.AddApplication();
             if (environment.IsEnvironment("Testing"))
             {
-                configuration["JwtSettings:Secret"] =
+                configuration["Jwt:Key"] =
                     "THIS_IS_A_TEST_SECRET_KEY_FOR_INTEGRATION_TESTS_123456789";
 
-                configuration["JwtSettings:Issuer"] =
+                configuration["Jwt:Issuer"] =
                     "CarServiceBookingSystem";
 
-                configuration["JwtSettings:Audience"] =
+                configuration["Jwt:Audience"] =
                     "CarServiceBookingSystemUsers";
 
-                configuration["JwtSettings:ExpiryMinutes"] =
-                    "60";
+                configuration["Jwt:AccessTokenExpirationMinutes"] =
+                    "15";
+
+                configuration["Jwt:RefreshTokenExpirationDays"] =
+                    "30";
             }
             services.AddInfrastructure(configuration);
 
@@ -126,6 +133,11 @@ namespace CarServiceBookingSystem.API
 
                 services.AddHangfireServer();
             }
+
+            // SignalR
+            services.AddSignalR();
+            services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+            services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
 
 
             return services;

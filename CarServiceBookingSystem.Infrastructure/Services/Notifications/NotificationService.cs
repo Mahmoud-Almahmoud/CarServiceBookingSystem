@@ -14,15 +14,18 @@ public class NotificationService : INotificationService
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IValidator<CreateNotificationRequest> _createValidator;
+    private readonly INotificationRealtimeService _notificationRealtimeService;
 
     public NotificationService(
         ApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IValidator<CreateNotificationRequest> createValidator)
+        IValidator<CreateNotificationRequest> createValidator,
+        INotificationRealtimeService notificationRealtimeService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _createValidator = createValidator;
+        _notificationRealtimeService = notificationRealtimeService;
     }
 
     public async Task<ApiResponse<NotificationResponse>> CreateAsync(
@@ -68,7 +71,26 @@ public class NotificationService : INotificationService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return ApiResponse<NotificationResponse>.Ok(MapToResponse(notification));
+        var response = MapToResponse(notification);
+
+        var unreadCount = await _context.Notifications
+            .AsNoTracking()
+            .CountAsync(x =>
+                x.UserId == notification.UserId &&
+                !x.IsRead,
+                cancellationToken);
+
+        await _notificationRealtimeService.SendNotificationAsync(
+            notification.UserId,
+            response,
+            cancellationToken);
+
+        await _notificationRealtimeService.SendUnreadCountAsync(
+            notification.UserId,
+            unreadCount,
+            cancellationToken);
+
+        return ApiResponse<NotificationResponse>.Ok(response);
     }
 
     public async Task<ApiResponse<List<NotificationResponse>>> CreateManyAsync(
@@ -133,11 +155,38 @@ public class NotificationService : INotificationService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        var response = notifications
-            .Select(MapToResponse)
-            .ToList();
+        var responseByUser = notifications
+                .Select(x => new
+                {
+                    x.UserId,
+                    Response = MapToResponse(x)
+                })
+                .ToList();
 
-        return ApiResponse<List<NotificationResponse>>.Ok(response);
+        foreach (var userGroup in responseByUser.GroupBy(x => x.UserId))
+        {
+            var unreadCount = await _context.Notifications
+                .AsNoTracking()
+                .CountAsync(x =>
+                    x.UserId == userGroup.Key &&
+                    !x.IsRead,
+                    cancellationToken);
+
+            foreach (var item in userGroup)
+            {
+                await _notificationRealtimeService.SendNotificationAsync(
+                    userGroup.Key,
+                    item.Response,
+                    cancellationToken);
+            }
+
+            await _notificationRealtimeService.SendUnreadCountAsync(
+                userGroup.Key,
+                unreadCount,
+                cancellationToken);
+        }
+
+        return ApiResponse<List<NotificationResponse>>.Ok(responseByUser.Select(x => x.Response).ToList());
     }
 
     public async Task<ApiResponse<PagedResponse<NotificationResponse>>> GetMyNotificationsAsync(
@@ -310,12 +359,31 @@ public class NotificationService : INotificationService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        return ApiResponse<NotificationReadResponse>.Ok(new NotificationReadResponse
+        var response = new NotificationReadResponse
         {
             NotificationId = notification.Id,
             IsRead = notification.IsRead,
             ReadAt = notification.ReadAt
-        });
+        };
+
+        var unreadCount = await _context.Notifications
+            .AsNoTracking()
+            .CountAsync(x =>
+                x.UserId == userId &&
+                !x.IsRead,
+                cancellationToken);
+
+        await _notificationRealtimeService.SendNotificationReadAsync(
+            userId,
+            response,
+            cancellationToken);
+
+        await _notificationRealtimeService.SendUnreadCountAsync(
+            userId,
+            unreadCount,
+            cancellationToken);
+
+        return ApiResponse<NotificationReadResponse>.Ok(response);
     }
 
     public async Task<ApiResponse<NotificationsReadAllResponse>> MarkAllAsReadAsync(
@@ -352,10 +420,22 @@ public class NotificationService : INotificationService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return ApiResponse<NotificationsReadAllResponse>.Ok(new NotificationsReadAllResponse
+        var response = new NotificationsReadAllResponse
         {
             UpdatedCount = unreadNotifications.Count
-        });
+        };
+
+        await _notificationRealtimeService.SendNotificationsReadAllAsync(
+            userId,
+            response,
+            cancellationToken);
+
+        await _notificationRealtimeService.SendUnreadCountAsync(
+            userId,
+            0,
+            cancellationToken);
+
+        return ApiResponse<NotificationsReadAllResponse>.Ok(response);
     }
 
     public async Task<ApiResponse<bool>> DeleteAsync(
