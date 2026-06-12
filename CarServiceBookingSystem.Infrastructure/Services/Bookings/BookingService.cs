@@ -173,8 +173,6 @@ public class BookingService : IBookingService
 
         var bookings = await GetBookingQuery()
             .Where(x => x.UserId == userId)
-            .Include(x => x.Service)
-            .Include(x => x.Car)
             .OrderByDescending(x => x.StartDate)
             .Select(x => ToResponse(x))
             .ToListAsync();
@@ -551,6 +549,7 @@ public class BookingService : IBookingService
             .AsNoTracking()
             .Include(x => x.Car)
             .Include(x => x.Service)
+            .Include(x=>x.Payment)
             .Include(x => x.ServiceBranch)
             .Include(x => x.Technician);
     }
@@ -582,6 +581,7 @@ public class BookingService : IBookingService
             StartDate = booking.StartDate,
             EndDate = booking.EndDate,
             Status = booking.Status,
+            PaymentStatus = booking.Payment?.Status ?? PaymentStatus.Pending,
 
             TechnicianId = booking.TechnicianId,
             TechnicianName = booking.Technician?.FullName ?? string.Empty,

@@ -62,6 +62,8 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Email already exists");
         }
 
+        return ApiResponse<AuthResponse>.Fail("Registration is currently disabled");
+
         var user = new ApplicationUser
         {
             FullName = request.FullName,
@@ -189,6 +191,10 @@ public class AuthService : IAuthService
         {
             return ApiResponse<string>.Ok("If the email exists, a reset password link has been sent.");
         }
+        if (user.UserName.Equals("admin@mahmoudev.com") || user.Email.Equals("user@mahmoudev.com"))
+        {
+            return ApiResponse<string>.Fail("This is a special account. Please contact support for password reset.");
+        }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
@@ -266,6 +272,11 @@ public class AuthService : IAuthService
 
         if (user == null)
             return ApiResponse<string>.Fail("User not found");
+
+        if (user.UserName.Equals("admin@mahmoudev.com") || user.Email.Equals("user@mahmoudev.com"))
+        {
+            return ApiResponse<string>.Fail("This is a special account. Please contact support for password change.");
+        }
 
         var result = await _userManager.ChangePasswordAsync(
             user,

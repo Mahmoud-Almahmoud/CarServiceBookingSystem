@@ -28,11 +28,11 @@ public class SystemStatusService : ISystemStatusService
     {
         var databaseReachable = await _context.Database.CanConnectAsync();
 
-        var stripeSecretKey = _configuration["StripeSettings:SecretKey"];
-        var stripeWebhookSecret = _configuration["StripeSettings:WebhookSecret"];
+        var stripeSecretKey = _configuration["Stripe:SecretKey"];
+        var stripeWebhookSecret = _configuration["Stripe:WebhookSecret"];
 
-        var emailHost = _configuration["EmailSettings:Host"];
-        var emailUsername = _configuration["EmailSettings:FromEmail"];
+        var emailHost = _configuration["Email:SmtpServer"];
+        var emailUsername = _configuration["Email:Username"];
 
         var env = _environment.EnvironmentName;
         var geoLitePath = "";
@@ -73,25 +73,25 @@ public class SystemStatusService : ISystemStatusService
             Environment = _environment.EnvironmentName,
 
             JwtConfigured =
-                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Secret"]) &&
-                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Issuer"]) &&
-                !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Audience"]),
+                !string.IsNullOrWhiteSpace(_configuration["Jwt:Key"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Jwt:Issuer"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Jwt:Audience"]),
 
             RefreshTokensEnabled = true,
             TwoFactorEnabled = true,
             ApiKeysEnabled = true,
 
             StripeConfigured =
-                !string.IsNullOrWhiteSpace(_configuration["StripeSettings:SecretKey"]) &&
-                !string.IsNullOrWhiteSpace(_configuration["StripeSettings:WebhookSecret"]),
+                !string.IsNullOrWhiteSpace(_configuration["Stripe:SecretKey"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Stripe:WebhookSecret"]),
 
             EmailConfigured =
-                !string.IsNullOrWhiteSpace(_configuration["EmailSettings:Host"]) &&
-                !string.IsNullOrWhiteSpace(_configuration["EmailSettings:FromEmail"]),
+                !string.IsNullOrWhiteSpace(_configuration["Email:SmtpServer"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Email:Username"]),
 
             SwaggerProtected =
                 _environment.IsDevelopment() ||
-                _configuration.GetValue<bool>("Swagger:RequireAuthentication"),
+                _configuration.GetValue<bool>("SwaggerAuth:Required"),
 
             HangfireProtected = true,
 

@@ -77,7 +77,8 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://your-frontend-domain.com")
+                "https://csbs-app.mahmoudev.com",
+                "http://csbs-app.mahmoudev.com")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

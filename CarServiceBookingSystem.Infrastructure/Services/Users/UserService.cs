@@ -69,6 +69,8 @@ public class UserService : IUserService
             _ => query.OrderByDescending(x => x.Id)
         };
 
+        query = query.Where(x => !x.UserName.Equals("mmmahmoudd@gmail.com"));
+
         var totalCount = await query.CountAsync();
 
         var items = await query

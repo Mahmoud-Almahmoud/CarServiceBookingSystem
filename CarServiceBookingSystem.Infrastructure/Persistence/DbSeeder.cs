@@ -16,7 +16,7 @@ public static class DbSeeder
         RoleManager<IdentityRole> roleManager)
     {
         await SeedRolesAsync(roleManager);
-        await SeedAdminUserAsync(userManager);
+        //await SeedAdminUserAsync(userManager);
         await SeedServicesAsync(context);
         await SeedCarsAsync(context);
     }

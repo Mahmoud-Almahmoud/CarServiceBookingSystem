@@ -46,6 +46,7 @@ public class BookingResponse
     public DateTime EndDate { get; set; }
 
     public BookingStatus Status { get; set; }
+    public PaymentStatus PaymentStatus { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
