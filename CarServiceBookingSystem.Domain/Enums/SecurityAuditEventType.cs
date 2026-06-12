@@ -7,6 +7,8 @@ public enum SecurityAuditEventType
     SuspiciousLogin,
     AccessDenied,
 
+    Registration,
+
     Logout,
     LogoutAllSessions,
 
@@ -14,6 +16,7 @@ public enum SecurityAuditEventType
     PasswordResetRequested,
     PasswordReset,
     EmailConfirmed,
+    EmailConfirmationFailed,
     EmailConfirmationResent,
 
     RefreshTokenUsed,
@@ -23,7 +26,7 @@ public enum SecurityAuditEventType
 
     TwoFactorEnabled,
     TwoFactorDisabled,
-    TwoFactorLogin,
+    TwoFactorLoginSucceeded,
     TwoFactorLoginFailed,
     TwoFactorRecoveryCodesGenerated,
 
@@ -31,10 +34,10 @@ public enum SecurityAuditEventType
     TrustedDeviceLogin,
     TrustedDeviceLoginFailed,
     TrustedDeviceRevoked,
-    TrustedDevicesRevoked,
+    TrustedDevicesRevokedAll,
 
     SessionRevoked,
-    SessionsRevoked,
+    SessionsRevokedAll,
 
     ApiKeyCreated,
     ApiKeyRevoked,

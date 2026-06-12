@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class ServicePriceRule : BaseEntity
+public class ServicePriceRule : BaseIdEntity
 {
     public int ServiceId { get; set; }
     public Service Service { get; set; } = null!;

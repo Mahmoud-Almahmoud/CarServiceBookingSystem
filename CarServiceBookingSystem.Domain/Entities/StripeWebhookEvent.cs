@@ -1,7 +1,7 @@
 ﻿using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 
-public class StripeWebhookEvent : BaseEntity
+public class StripeWebhookEvent : BaseIdEntity
 {
     public string StripeEventId { get; set; } = null!;
     public string EventType { get; set; } = null!;

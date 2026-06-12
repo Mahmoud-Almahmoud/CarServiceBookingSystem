@@ -1,5 +1,5 @@
 ﻿using CarServiceBookingSystem.Application.Common;
-using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IAuth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 

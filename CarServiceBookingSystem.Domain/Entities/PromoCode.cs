@@ -2,7 +2,7 @@
 
 namespace CarServiceBookingSystem.Domain.Entities;
 
-public class PromoCode : BaseEntity
+public class PromoCode : BaseIdEntity
 {
     public string Code { get; set; } = string.Empty;
 

@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class TechnicianWorkingHour :BaseEntity
+public class TechnicianWorkingHour :BaseIdEntity
 {
     public int TechnicianId { get; set; }
     public Technician Technician { get; set; } = null!;

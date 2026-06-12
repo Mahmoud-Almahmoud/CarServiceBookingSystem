@@ -24,6 +24,9 @@ public sealed class SwaggerBasicAuthMiddleware
             return;
         }
 
+        //await _next(context);
+        //return;
+
         //Allow Swagger freely in local development.
         if (environment.IsDevelopment())
         {

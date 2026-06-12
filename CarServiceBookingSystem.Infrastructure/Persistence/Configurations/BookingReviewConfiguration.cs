@@ -8,6 +8,14 @@ public class BookingReviewConfiguration : IEntityTypeConfiguration<BookingReview
 {
     public void Configure(EntityTypeBuilder<BookingReview> builder)
     {
+        var tableName = builder.Metadata.GetTableName();
+        builder.ToTable(tb => tb.IsTemporal(t =>
+        {
+            t.HasPeriodStart("PeriodStart");
+            t.HasPeriodEnd("PeriodEnd");
+            t.UseHistoryTable($"{tableName}History", schema: "auditing");
+        }));
+
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.UserId)

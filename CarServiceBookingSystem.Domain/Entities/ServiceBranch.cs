@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class ServiceBranch : BaseEntity
+    public class ServiceBranch : BaseIdEntity
     {
         public string Name { get; set; } = string.Empty;
 

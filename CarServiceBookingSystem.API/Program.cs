@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using CarServiceBookingSystem.API;
+using CarServiceBookingSystem.API.BackgroundJobs;
 using CarServiceBookingSystem.API.Filters;
 using CarServiceBookingSystem.API.Middleware;
 using CarServiceBookingSystem.API.Middlewares;
@@ -76,7 +77,8 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://your-frontend-domain.com")
+                "https://csbs-app.mahmoudev.com",
+                "http://csbs-app.mahmoudev.com")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -124,7 +126,6 @@ if (!app.Environment.IsEnvironment("Testing"))
         .GetRequiredService<RoleManager<IdentityRole>>();
 
     await DbSeeder.SeedAsync(dbContext, userManager, roleManager);
-    await CarLookupSeeder.SeedAsync(dbContext);
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();

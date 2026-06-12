@@ -16,8 +16,9 @@ public static class DbSeeder
         RoleManager<IdentityRole> roleManager)
     {
         await SeedRolesAsync(roleManager);
-        await SeedAdminUserAsync(userManager);
+        //await SeedAdminUserAsync(userManager);
         await SeedServicesAsync(context);
+        await SeedCarsAsync(context);
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
@@ -148,6 +149,106 @@ public static class DbSeeder
         };
 
         await context.Services.AddRangeAsync(services);
+        await context.SaveChangesAsync();
+    }
+
+    public static async Task SeedCarsAsync(ApplicationDbContext context)
+    {
+        if (await context.CarBrands.AnyAsync())
+            return;
+
+        var toyota = new CarBrand
+        {
+            Name = "Toyota",
+            Models =
+            [
+                new CarModel
+                {
+                    Name = "Camry",
+                    Years =
+                    [
+                        new CarYear
+                        {
+                            Year = 2023,
+                            Trims =
+                            [
+                                new CarTrim { Name = "LE" },
+                                new CarTrim { Name = "SE" },
+                                new CarTrim { Name = "XSE" }
+                            ]
+                        }
+                    ]
+                },
+                new CarModel
+                {
+                    Name = "Corolla",
+                    Years =
+                    [
+                        new CarYear
+                        {
+                            Year = 2023,
+                            Trims =
+                            [
+                                new CarTrim { Name = "L" },
+                                new CarTrim { Name = "LE" },
+                                new CarTrim { Name = "XSE" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var nissan = new CarBrand
+        {
+            Name = "Nissan",
+            Models =
+            [
+                new CarModel
+                {
+                    Name = "Altima",
+                    Years =
+                    [
+                        new CarYear
+                        {
+                            Year = 2023,
+                            Trims =
+                            [
+                                new CarTrim { Name = "S" },
+                                new CarTrim { Name = "SV" },
+                                new CarTrim { Name = "SL" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var bmw = new CarBrand
+        {
+            Name = "BMW",
+            Models =
+            [
+                new CarModel
+                {
+                    Name = "3 Series",
+                    Years =
+                    [
+                        new CarYear
+                        {
+                            Year = 2023,
+                            Trims =
+                            [
+                                new CarTrim { Name = "330i" },
+                                new CarTrim { Name = "M340i" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        await context.CarBrands.AddRangeAsync(toyota, nissan, bmw);
         await context.SaveChangesAsync();
     }
 

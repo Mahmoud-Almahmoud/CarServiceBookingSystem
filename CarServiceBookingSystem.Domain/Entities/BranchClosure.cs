@@ -2,7 +2,7 @@
 
 namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class BranchClosure : BaseEntity
+    public class BranchClosure : BaseIdEntity
     {
         public int ServiceBranchId { get; set; }
 

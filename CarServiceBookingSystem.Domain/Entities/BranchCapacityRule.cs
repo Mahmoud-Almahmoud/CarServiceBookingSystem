@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class BranchCapacityRule : BaseEntity
+    public class BranchCapacityRule : BaseIdEntity
     {
         public int ServiceBranchId { get; set; }
 

@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class BookingReview : BaseEntity
+public class BookingReview : BaseIdEntity
 {
     public int BookingId { get; set; }
     public Booking Booking { get; set; } = null!;

@@ -1,6 +1,6 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.Application.DTOs.Schedules;
-using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.ITechnicians;
 using CarServiceBookingSystem.Application.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

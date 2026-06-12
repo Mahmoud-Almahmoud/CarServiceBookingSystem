@@ -1,6 +1,6 @@
 ﻿namespace CarServiceBookingSystem.Domain.Entities;
 
-public class PromoCodeRedemption : BaseEntity
+public class PromoCodeRedemption : BaseIdEntity
 {
     public int PromoCodeId { get; set; }
     public PromoCode PromoCode { get; set; } = null!;

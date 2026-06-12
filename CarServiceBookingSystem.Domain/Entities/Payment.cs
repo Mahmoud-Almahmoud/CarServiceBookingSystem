@@ -5,7 +5,7 @@ using System.Text;
 
 namespace CarServiceBookingSystem.Domain.Entities
 {
-    public class Payment : BaseEntity
+    public class Payment : BaseIdEntity
     {
         public int BookingId { get; set; }
         public Booking Booking { get; set; } = null!;
