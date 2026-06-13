@@ -423,6 +423,11 @@ public class BookingService : IBookingService
             : request.Reason.Trim();
         booking.UpdatedAt = DateTime.UtcNow;
 
+        if (booking.Payment is not null)
+        {
+            booking.Payment.Status = PaymentStatus.Cancelled;
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         if (cancellationPolicy.RefundRequired && booking.Payment is not null)
@@ -440,6 +445,7 @@ public class BookingService : IBookingService
                 .Reference(x => x.Payment)
                 .LoadAsync(cancellationToken);
         }
+       
 
         var response = new BookingCancellationResponse
         {

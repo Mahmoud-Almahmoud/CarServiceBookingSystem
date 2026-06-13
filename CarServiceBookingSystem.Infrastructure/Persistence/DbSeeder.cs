@@ -17,6 +17,7 @@ public static class DbSeeder
     {
         await SeedRolesAsync(roleManager);
         //await SeedAdminUserAsync(userManager);
+        await SeedTestUsersAsync(userManager);
         await SeedServicesAsync(context);
         await SeedCarsAsync(context);
     }
@@ -114,6 +115,53 @@ public static class DbSeeder
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(admin, Roles.Admin);
+            }
+        }
+    }
+
+    private static async Task SeedTestUsersAsync(UserManager<ApplicationUser> userManager)
+    {
+        const string adminEmail = "admin@mahmoudev.com";
+        const string adminPassword = "Admin123!";
+
+        const string userEmail = "user@mahmoudev.com";
+        const string userPassword = "User123!";
+
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        var user = await userManager.FindByEmailAsync(userEmail);
+
+        if (admin == null)
+        {
+            admin = new ApplicationUser
+            {
+                FullName = "Test Admin",
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+
+            var result = await userManager.CreateAsync(admin, adminPassword);
+
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(admin, Roles.Admin);
+            }
+        }
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                FullName = "Test User",
+                UserName = userEmail,
+                Email = userEmail,
+                EmailConfirmed = true
+            };
+
+            var result = await userManager.CreateAsync(user, userPassword);
+
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(user, Roles.User);
             }
         }
     }
