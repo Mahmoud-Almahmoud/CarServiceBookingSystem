@@ -1,7 +1,10 @@
 ﻿using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.Constants;
+using CarServiceBookingSystem.Application.DTOs.Notifications;
 using CarServiceBookingSystem.Application.DTOs.Payments;
 using CarServiceBookingSystem.Application.Interfaces.IBookings;
 using CarServiceBookingSystem.Application.Interfaces.IContext;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Application.Interfaces.IPayments;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
@@ -35,6 +38,7 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
     private readonly IBookingAssignmentService _bookingAssignmentService;
     private readonly string _currency;
+    private readonly INotificationService _notificationService;
 
     public PaymentService(
         ApplicationDbContext context,
@@ -43,7 +47,8 @@ public class PaymentService : IPaymentService
         IIdempotencyContext idempotencyContext,
         PaymentIntentService paymentIntentService,
         ILogger<PaymentService> logger,
-        IBookingAssignmentService bookingAssignmentService)
+        IBookingAssignmentService bookingAssignmentService,
+        INotificationService notificationService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -53,6 +58,7 @@ public class PaymentService : IPaymentService
         _stripeSettings = options.Value;
         _logger = logger;
         _bookingAssignmentService = bookingAssignmentService;
+        _notificationService = notificationService;
     }
 
     public async Task<ApiResponse<PaymentIntentResponse>> CreatePaymentIntentAsync(CreatePaymentIntentRequest request,
@@ -668,6 +674,17 @@ public class PaymentService : IPaymentService
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        await NotifyUserAsync(
+            payment.UserId,
+            "Payment succeeded",
+            $"Your payment for booking #{payment.BookingId} was successful.",
+            NotificationType.PaymentSucceeded,
+            NotificationSeverity.Success,
+            NotificationEntityTypes.Payment,
+            payment.Id,
+            $"/bookings/{payment.BookingId}",
+            cancellationToken);
+
         await _bookingAssignmentService.AutoAssignTechnicianAsync(payment.Booking.Id, cancellationToken);
     }
 
@@ -701,6 +718,17 @@ public class PaymentService : IPaymentService
         payment.UpdatedAt = DateTime.UtcNow;
 
         payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+        await NotifyUserAsync(
+           payment.UserId,
+           "Payment failed",
+           $"Payment failed for booking #{payment.BookingId}. Please try again.",
+           NotificationType.PaymentFailed,
+           NotificationSeverity.Error,
+           NotificationEntityTypes.Payment,
+           payment.Id,
+           $"/bookings/{payment.BookingId}/payment",
+           cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
     }
@@ -762,11 +790,31 @@ public class PaymentService : IPaymentService
             case "succeeded":
                 payment.Status = PaymentStatus.Refunded;
                 payment.RefundedAt ??= DateTime.UtcNow;
+                await NotifyUserAsync(
+                        payment.UserId,
+                        "Refund processed",
+                        $"Your refund for booking #{payment.BookingId} has been processed.",
+                        NotificationType.RefundSucceeded,
+                        NotificationSeverity.Success,
+                        NotificationEntityTypes.Refund,
+                        payment.Id,
+                        $"/bookings/{payment.BookingId}",
+                        cancellationToken);
                 break;
 
             case "failed":
                 payment.Status = PaymentStatus.RefundFailed;
                 payment.RefundFailureReason = refund.FailureReason;
+                await NotifyUserAsync(
+                        payment.UserId,
+                        "Refund failed",
+                        $"Your refund for booking #{payment.BookingId} has failed. Please contact support",
+                        NotificationType.RefundFailed,
+                        NotificationSeverity.Error,
+                        NotificationEntityTypes.Refund,
+                        payment.Id,
+                        $"/bookings/{payment.BookingId}",
+                        cancellationToken);
                 break;
 
             case "pending":
@@ -777,6 +825,16 @@ public class PaymentService : IPaymentService
             case "canceled":
                 payment.Status = PaymentStatus.RefundFailed;
                 payment.RefundFailureReason = "Refund was canceled.";
+                await NotifyUserAsync(
+                       payment.UserId,
+                       "Refund failed",
+                       $"Your refund for booking #{payment.BookingId} has failed. Please contact support",
+                       NotificationType.RefundFailed,
+                       NotificationSeverity.Error,
+                       NotificationEntityTypes.Refund,
+                       payment.Id,
+                       $"/bookings/{payment.BookingId}",
+                       cancellationToken);
                 break;
 
             default:
@@ -1075,5 +1133,41 @@ public class PaymentService : IPaymentService
         return zeroDecimalCurrencies.Contains(currency)
             ? amount
             : amount / 100m;
+    }
+
+    private async Task NotifyUserAsync(
+    string userId,
+    string title,
+    string message,
+    NotificationType type,
+    NotificationSeverity severity,
+    string? entityType,
+    int? entityId,
+    string? actionUrl,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _notificationService.CreateAsync(
+            new CreateNotificationRequest
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                Type = type,
+                Severity = severity,
+                EntityType = entityType,
+                EntityId = entityId,
+                ActionUrl = actionUrl
+            },
+            cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to create notification for UserId {UserId}, Type {NotificationType}, EntityType {EntityType}, EntityId {EntityId}",
+                userId, type, entityType, entityId);
+        }
     }
 }

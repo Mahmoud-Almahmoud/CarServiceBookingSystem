@@ -1,8 +1,11 @@
 ﻿using CarServiceBookingSystem.Application.Common;
+using CarServiceBookingSystem.Application.Constants;
 using CarServiceBookingSystem.Application.DTOs.Auth;
+using CarServiceBookingSystem.Application.DTOs.Notifications;
 using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces.IAuth;
 using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Application.Interfaces.IUtils;
 using CarServiceBookingSystem.Application.Options;
 using CarServiceBookingSystem.Application.Security;
@@ -14,6 +17,7 @@ using CarServiceBookingSystem.Infrastructure.Utils.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -31,6 +35,8 @@ public class AuthService : IAuthService
     private readonly IQrCodeService _qrCodeService;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly JwtOptions _jwtOption;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -40,7 +46,9 @@ public class AuthService : IAuthService
         ISecurityAuditService securityAuditService,
         IQrCodeService qrCodeService,
         IGeoLocationService geoLocationService, RoleManager<IdentityRole> roleManager,
-        IOptions<JwtOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions,
+        INotificationService notificationService,
+        ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -51,6 +59,8 @@ public class AuthService : IAuthService
         _securityAuditService = securityAuditService;
         _roleManager = roleManager;
         _jwtOption = jwtOptions.Value;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -259,7 +269,7 @@ public class AuthService : IAuthService
         return ApiResponse<string>.Ok("Password reset successfully");
     }
 
-    public async Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request)
+    public async Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -319,10 +329,22 @@ public class AuthService : IAuthService
         await _securityAuditService.LogAsync(user.Id, 
             SecurityAuditEventType.PasswordChanged,
             "Password changed successfully");
+
+        await NotifyUserAsync(
+                user.Id,
+                "Security alert",
+                "Password changed successfully.",
+                NotificationType.SecurityAlert,
+                NotificationSeverity.Success,
+                NotificationEntityTypes.Security,
+                null,
+                null,
+                cancellationToken);
+
         return ApiResponse<string>.Ok("Password changed successfully");
     }
 
-    public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
+    public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -359,6 +381,17 @@ public class AuthService : IAuthService
                 user.Id,
                 SecurityAuditEventType.SuspiciousLogin,
                 "Login from a new IP address or device");
+
+            await NotifyUserAsync(
+                user.Id,
+                "Security alert",
+                "A suspicious login was detected on your account.",
+                NotificationType.SecurityAlert,
+                NotificationSeverity.Warning,
+                NotificationEntityTypes.Security,
+                null,
+                "/security/my-activity",
+                cancellationToken);
 
             _backgroundJobService.EnqueueEmail(user.Email!, "New Login Detected",
                 "A new login was detected on your account. If this was not you, please change your password immediately.");
@@ -690,7 +723,7 @@ public class AuthService : IAuthService
         return ApiResponse<EnableTwoFactorResponse>.Ok(response);
     }
 
-    public async Task<ApiResponse<string>> EnableTwoFactorAsync(VerifyTwoFactorRequest request)
+    public async Task<ApiResponse<string>> EnableTwoFactorAsync(VerifyTwoFactorRequest request, CancellationToken cancellationToken)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -722,6 +755,17 @@ public class AuthService : IAuthService
            userId,
            SecurityAuditEventType.TwoFactorEnabled,
            $"User enabled two-factor authentication");
+
+        await NotifyUserAsync(
+                user.Id,
+                "Security alert",
+                "Two-factor authentication enabled",
+                NotificationType.SecurityAlert,
+                NotificationSeverity.Success,
+                NotificationEntityTypes.Security,
+                null,
+                null,
+                cancellationToken);
 
         return ApiResponse<string>.Ok("Two-factor authentication enabled successfully");
     }
@@ -801,7 +845,7 @@ public class AuthService : IAuthService
         }, "Login successful");
     }
 
-    public async Task<ApiResponse<string>> DisableTwoFactorAsync(DisableTwoFactorRequest request)
+    public async Task<ApiResponse<string>> DisableTwoFactorAsync(DisableTwoFactorRequest request, CancellationToken cancellationToken)
     {
         var userId = _httpContextAccessor.HttpContext?.User?
             .FindFirst(ClaimTypes.NameIdentifier)?
@@ -844,6 +888,17 @@ public class AuthService : IAuthService
             user.Id,
             SecurityAuditEventType.TwoFactorDisabled,
             null);
+
+        await NotifyUserAsync(
+                user.Id,
+                "Security alert",
+                "Two-factor authentication disabled",
+                NotificationType.SecurityAlert,
+                NotificationSeverity.Warning,
+                NotificationEntityTypes.Security,
+                null,
+                null,
+                cancellationToken);
 
         return ApiResponse<string>.Ok("Two-factor authentication disabled successfully");
     }
@@ -1245,5 +1300,42 @@ public class AuthService : IAuthService
     {
         public int Id { get; set; }
         public string Token { get; set; } = string.Empty;  
+    }
+
+    private async Task NotifyUserAsync(
+   string userId,
+   string title,
+   string message,
+   NotificationType type,
+   NotificationSeverity severity,
+   string? entityType,
+   int? entityId,
+   string? actionUrl,
+   CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _notificationService.CreateAsync(
+            new CreateNotificationRequest
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                Type = type,
+                Severity = severity,
+                EntityType = entityType,
+                EntityId = entityId,
+                ActionUrl = actionUrl
+            },
+            cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to create notification for UserId {UserId}, Type {NotificationType}, EntityType {EntityType}, EntityId {EntityId}",
+                userId, type, entityType, entityId);
+        }
+
     }
 }

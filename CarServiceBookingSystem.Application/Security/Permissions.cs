@@ -89,5 +89,13 @@ public static class Permissions
     {
         public const string View = "Technicians.View";
         public const string Manage = "Technicians.Manage";
+        public const string ViewAssignedBookings = "Technicians.ViewAssignedBookings";
+    }
+
+    public static class Notifications
+    {
+        public const string Send = "Notifications.Send";
+        public const string ViewAll = "Notifications.ViewAll";
+        public const string Broadcast = "Notifications.Broadcast";
     }
 }

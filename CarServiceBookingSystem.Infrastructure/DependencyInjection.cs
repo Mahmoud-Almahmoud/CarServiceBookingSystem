@@ -7,6 +7,7 @@ using CarServiceBookingSystem.Application.Interfaces.ICars;
 using CarServiceBookingSystem.Application.Interfaces.IContext;
 using CarServiceBookingSystem.Application.Interfaces.IEmail;
 using CarServiceBookingSystem.Application.Interfaces.IGeoLocation;
+using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Application.Interfaces.IPayments;
 using CarServiceBookingSystem.Application.Interfaces.ISecurity;
 using CarServiceBookingSystem.Application.Interfaces.IServices;
@@ -26,6 +27,7 @@ using CarServiceBookingSystem.Infrastructure.Services.Cars;
 using CarServiceBookingSystem.Infrastructure.Services.CarServices;
 using CarServiceBookingSystem.Infrastructure.Services.Email;
 using CarServiceBookingSystem.Infrastructure.Services.GeoLocation;
+using CarServiceBookingSystem.Infrastructure.Services.Notifications;
 using CarServiceBookingSystem.Infrastructure.Services.Payments;
 using CarServiceBookingSystem.Infrastructure.Services.Security;
 using CarServiceBookingSystem.Infrastructure.Services.Technicians;
@@ -73,6 +75,10 @@ public static class DependencyInjection
         //services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
         //services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
+        services.Configure<NotificationCleanupOptions>(configuration.GetSection("NotificationCleanup"));
+        services.Configure<WebPushOptions>(configuration.GetSection("WebPush"));
+
+        
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection("Jwt"))
@@ -124,6 +130,23 @@ public static class DependencyInjection
 
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtSettings.Key))
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+
+                    var path = context.HttpContext.Request.Path;
+
+                    if (!string.IsNullOrWhiteSpace(accessToken) &&
+                        path.StartsWithSegments("/hubs/notifications"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -213,6 +236,12 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IBookingReceiptService, BookingReceiptService>();
         services.AddScoped<IBookingReviewService, BookingReviewService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationAudienceService, NotificationAudienceService>();
+        services.AddScoped<INotificationCleanupJob, NotificationCleanupJob>();
+        services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+        services.AddScoped<IPushNotificationService, PushNotificationService>();
+        services.AddScoped<INotificationBroadcastService, NotificationBroadcastService>();
 
         return services;
     }

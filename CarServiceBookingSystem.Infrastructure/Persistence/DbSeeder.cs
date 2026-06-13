@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace CarServiceBookingSystem.Infrastructure.Persistence;
@@ -13,12 +14,17 @@ public static class DbSeeder
     public static async Task SeedAsync(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager)
+        RoleManager<IdentityRole> roleManager,
+        ILogger logger,
+        CancellationToken cancellationToken = default)
     {
         await SeedRolesAsync(roleManager);
         //await SeedAdminUserAsync(userManager);
+        await SeedTestUsersAsync(userManager);
         await SeedServicesAsync(context);
         await SeedCarsAsync(context);
+
+        await PortfolioDemoSeeder.SeedPortfolioAsync(context,logger,cancellationToken);
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
@@ -72,6 +78,11 @@ public static class DbSeeder
 
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Technicians.Manage);
         await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Technicians.View);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Technicians.ViewAssignedBookings);
+
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Notifications.ViewAll);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Notifications.Send);
+        await AddPermissionClaimAsync(roleManager, Roles.Admin, Permissions.Notifications.Broadcast);
 
         // User permissions
         await AddPermissionClaimAsync(roleManager, Roles.User, Permissions.Services.View);
@@ -111,6 +122,53 @@ public static class DbSeeder
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(admin, Roles.Admin);
+            }
+        }
+    }
+
+    private static async Task SeedTestUsersAsync(UserManager<ApplicationUser> userManager)
+    {
+        const string adminEmail = "admin@mahmoudev.com";
+        const string adminPassword = "Admin123!";
+
+        const string userEmail = "user@mahmoudev.com";
+        const string userPassword = "User123!";
+
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        var user = await userManager.FindByEmailAsync(userEmail);
+
+        if (admin == null)
+        {
+            admin = new ApplicationUser
+            {
+                FullName = "Test Admin",
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+
+            var result = await userManager.CreateAsync(admin, adminPassword);
+
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(admin, Roles.Admin);
+            }
+        }
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                FullName = "Test User",
+                UserName = userEmail,
+                Email = userEmail,
+                EmailConfirmed = true
+            };
+
+            var result = await userManager.CreateAsync(user, userPassword);
+
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(user, Roles.User);
             }
         }
     }
