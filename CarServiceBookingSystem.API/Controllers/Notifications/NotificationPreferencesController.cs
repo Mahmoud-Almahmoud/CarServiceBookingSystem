@@ -1,12 +1,11 @@
 ﻿using Asp.Versioning;
 using CarServiceBookingSystem.Application.DTOs.NotificationPreferences;
-using CarServiceBookingSystem.Application.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces.INotification;
 using CarServiceBookingSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CarServiceBookingSystem.API.Controllers;
+namespace CarServiceBookingSystem.API.Controllers.Notifications;
 
 [ApiController]
 [Authorize]

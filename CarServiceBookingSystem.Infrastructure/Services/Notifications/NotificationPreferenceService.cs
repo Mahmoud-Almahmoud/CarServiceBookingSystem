@@ -93,8 +93,8 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Notifications
             }
 
             preference.InAppEnabled = isMandatory || request.InAppEnabled;
-            preference.EmailEnabled = !isMandatory && request.EmailEnabled;
-            preference.PushEnabled = !isMandatory && request.PushEnabled;
+            preference.EmailEnabled = request.EmailEnabled;
+            preference.PushEnabled = request.PushEnabled;
             preference.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -157,8 +157,8 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Notifications
                 var isMandatory = IsMandatory(item.Type);
 
                 preference.InAppEnabled = isMandatory || item.InAppEnabled;
-                preference.EmailEnabled = !isMandatory && item.EmailEnabled;
-                preference.PushEnabled = !isMandatory && item.PushEnabled;
+                preference.EmailEnabled = item.EmailEnabled;
+                preference.PushEnabled = item.PushEnabled;
                 preference.UpdatedAt = now;
             }
 
@@ -202,6 +202,36 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Notifications
             return preference?.InAppEnabled ?? true;
         }
 
+        public async Task<NotificationDeliveryPreferenceResponse> GetDeliveryPreferenceAsync(
+    string userId,
+    NotificationType type,
+    CancellationToken cancellationToken = default)
+        {
+            var isMandatory = IsMandatory(type);
+
+            var preference = await _context.NotificationPreferences
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Type == type,
+                    cancellationToken);
+
+            return new NotificationDeliveryPreferenceResponse
+            {
+                Type = type,
+                IsMandatory = isMandatory,
+
+                // Mandatory notifications always create in-app DB notification.
+                InAppEnabled = isMandatory || preference?.InAppEnabled != false,
+
+                // Push is user-controlled.
+                PushEnabled = preference?.PushEnabled == true,
+
+                // Email is user-controlled.
+                EmailEnabled = preference?.EmailEnabled == true
+            };
+        }
+
         private static NotificationPreferenceResponse MapToResponse(
             NotificationType type,
             NotificationPreference? preference)
@@ -213,8 +243,8 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Notifications
                 Type = type,
                 TypeName = type.ToString(),
                 InAppEnabled = isMandatory || preference?.InAppEnabled != false,
-                EmailEnabled = !isMandatory && preference?.EmailEnabled == true,
-                PushEnabled = !isMandatory && preference?.PushEnabled == true,
+                EmailEnabled = preference?.EmailEnabled == true,
+                PushEnabled = preference?.PushEnabled == true,
                 IsMandatory = isMandatory,
                 UpdatedAt = preference?.UpdatedAt
             };

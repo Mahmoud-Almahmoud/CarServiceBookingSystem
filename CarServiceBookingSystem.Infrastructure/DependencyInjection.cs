@@ -76,6 +76,9 @@ public static class DependencyInjection
         services.Configure<BookingCleanupOptions>(configuration.GetSection("BookingCleanup"));
         //services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
         services.Configure<NotificationCleanupOptions>(configuration.GetSection("NotificationCleanup"));
+        services.Configure<WebPushOptions>(configuration.GetSection("WebPush"));
+
+        
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection("Jwt"))
@@ -237,6 +240,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationAudienceService, NotificationAudienceService>();
         services.AddScoped<INotificationCleanupJob, NotificationCleanupJob>();
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+        services.AddScoped<IPushNotificationService, PushNotificationService>();
 
         return services;
     }

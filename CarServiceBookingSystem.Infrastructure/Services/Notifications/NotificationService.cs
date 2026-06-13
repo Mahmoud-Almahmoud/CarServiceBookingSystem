@@ -16,19 +16,22 @@ public class NotificationService : INotificationService
     private readonly IValidator<CreateNotificationRequest> _createValidator;
     private readonly INotificationRealtimeService _notificationRealtimeService;
     private readonly INotificationPreferenceService _notificationPreferenceService;
+    private readonly IPushNotificationService _pushNotificationService;
 
     public NotificationService(
         ApplicationDbContext context,
         ICurrentUserService currentUserService,
         IValidator<CreateNotificationRequest> createValidator,
         INotificationRealtimeService notificationRealtimeService,
-        INotificationPreferenceService notificationPreferenceService)
+        INotificationPreferenceService notificationPreferenceService,
+        IPushNotificationService pushNotificationService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _createValidator = createValidator;
         _notificationRealtimeService = notificationRealtimeService;
         _notificationPreferenceService = notificationPreferenceService;
+        _pushNotificationService = pushNotificationService;
     }
 
     public async Task<ApiResponse<NotificationResponse>> CreateAsync(
@@ -52,119 +55,18 @@ public class NotificationService : INotificationService
             return ApiResponse<NotificationResponse>.Fail("User not found.");
         }
 
-        var inAppEnabled = await _notificationPreferenceService.IsInAppEnabledAsync(
-            request.UserId,
-            request.Type,
-            cancellationToken);
+        var deliveryPreference = await _notificationPreferenceService.GetDeliveryPreferenceAsync(
+    request.UserId,
+    request.Type,
+    cancellationToken);
 
-        if (!inAppEnabled)
+        var now = DateTime.UtcNow;
+
+        NotificationResponse response;
+
+        if (deliveryPreference.InAppEnabled)
         {
-            return ApiResponse<NotificationResponse>.Ok(new NotificationResponse
-            {
-                Id = 0,
-                Title = request.Title,
-                Message = request.Message,
-                Type = request.Type,
-                Severity = request.Severity,
-                EntityType = request.EntityType,
-                EntityId = request.EntityId,
-                ActionUrl = request.ActionUrl,
-                IsRead = true,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        var notification = new Notification
-        {
-            UserId = request.UserId,
-            Title = request.Title.Trim(),
-            Message = request.Message.Trim(),
-            Type = request.Type,
-            Severity = request.Severity,
-            EntityType = string.IsNullOrWhiteSpace(request.EntityType)
-                ? null
-                : request.EntityType.Trim(),
-            EntityId = request.EntityId,
-            ActionUrl = string.IsNullOrWhiteSpace(request.ActionUrl)
-                ? null
-                : request.ActionUrl.Trim(),
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Notifications.Add(notification);
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        var response = MapToResponse(notification);
-
-        var unreadCount = await _context.Notifications
-            .AsNoTracking()
-            .CountAsync(x =>
-                x.UserId == notification.UserId &&
-                !x.IsRead,
-                cancellationToken);
-
-        await _notificationRealtimeService.SendNotificationAsync(
-            notification.UserId,
-            response,
-            cancellationToken);
-
-        await _notificationRealtimeService.SendUnreadCountAsync(
-            notification.UserId,
-            unreadCount,
-            cancellationToken);
-
-        return ApiResponse<NotificationResponse>.Ok(response);
-    }
-
-    public async Task<ApiResponse<List<NotificationResponse>>> CreateManyAsync(
-        List<CreateNotificationRequest> requests,
-        CancellationToken cancellationToken = default)
-    {
-        if (requests.Count == 0)
-        {
-            return ApiResponse<List<NotificationResponse>>.Fail("At least one notification is required.");
-        }
-
-        var notifications = new List<Notification>();
-        var skippedResponses = new List<NotificationResponse>();
-
-        foreach (var request in requests)
-        {
-            var validationResult = await _createValidator.ValidateAsync(request, cancellationToken);
-
-            if (!validationResult.IsValid)
-            {
-                var errors = string.Join(", ", validationResult.Errors.Select(x => x.ErrorMessage));
-                return ApiResponse<List<NotificationResponse>>.Fail(errors);
-            }
-
-            var inAppEnabled = await _notificationPreferenceService.IsInAppEnabledAsync(
-                request.UserId,
-                request.Type,
-                cancellationToken);
-
-            if (!inAppEnabled)
-            {
-                skippedResponses.Add(new NotificationResponse
-                {
-                    Id = 0,
-                    Title = request.Title,
-                    Message = request.Message,
-                    Type = request.Type,
-                    Severity = request.Severity,
-                    EntityType = request.EntityType,
-                    EntityId = request.EntityId,
-                    ActionUrl = request.ActionUrl,
-                    IsRead = true,
-                    CreatedAt = DateTime.UtcNow
-                });
-
-                continue;
-            }
-
-            notifications.Add(new Notification
+            var notification = new Notification
             {
                 UserId = request.UserId,
                 Title = request.Title.Trim(),
@@ -179,19 +81,142 @@ public class NotificationService : INotificationService
                     ? null
                     : request.ActionUrl.Trim(),
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+                CreatedAt = now
+            };
 
-        if (notifications.Count == 0)
+            _context.Notifications.Add(notification);
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            response = MapToResponse(notification);
+
+            var unreadCount = await _context.Notifications
+                .AsNoTracking()
+                .CountAsync(x =>
+                    x.UserId == notification.UserId &&
+                    !x.IsRead,
+                    cancellationToken);
+
+            await _notificationRealtimeService.SendNotificationAsync(
+                notification.UserId,
+                response,
+                cancellationToken);
+
+            await _notificationRealtimeService.SendUnreadCountAsync(
+                notification.UserId,
+                unreadCount,
+                cancellationToken);
+        }
+        else
         {
-            return ApiResponse<List<NotificationResponse>>.Ok(skippedResponses);
+            response = new NotificationResponse
+            {
+                Id = 0,
+                Title = request.Title.Trim(),
+                Message = request.Message.Trim(),
+                Type = request.Type,
+                Severity = request.Severity,
+                EntityType = string.IsNullOrWhiteSpace(request.EntityType)
+                    ? null
+                    : request.EntityType.Trim(),
+                EntityId = request.EntityId,
+                ActionUrl = string.IsNullOrWhiteSpace(request.ActionUrl)
+                    ? null
+                    : request.ActionUrl.Trim(),
+                IsRead = true,
+                CreatedAt = now
+            };
         }
 
-        var userIds = notifications
-            .Select(x => x.UserId)
-            .Distinct()
-            .ToList();
+        if (deliveryPreference.PushEnabled)
+        {
+            await _pushNotificationService.SendToUserAsync(
+                request.UserId,
+                response,
+                cancellationToken);
+        }
+
+        return ApiResponse<NotificationResponse>.Ok(response);
+
+    }
+
+    public async Task<ApiResponse<List<NotificationResponse>>> CreateManyAsync(
+        List<CreateNotificationRequest> requests,
+        CancellationToken cancellationToken = default)
+    {
+        if (requests.Count == 0)
+        {
+            return ApiResponse<List<NotificationResponse>>.Fail("At least one notification is required.");
+        }
+
+        var savedNotifications = new List<Notification>();
+        var pushOnlyResponses = new List<(string UserId, NotificationResponse Response)>();
+        var now = DateTime.UtcNow;
+
+        foreach (var request in requests)
+        {
+            var validationResult = await _createValidator.ValidateAsync(request, cancellationToken);
+
+            if (!validationResult.IsValid)
+            {
+                var errors = string.Join(", ", validationResult.Errors.Select(x => x.ErrorMessage));
+                return ApiResponse<List<NotificationResponse>>.Fail(errors);
+            }
+
+            var deliveryPreference = await _notificationPreferenceService.GetDeliveryPreferenceAsync(
+                request.UserId,
+                request.Type,
+                cancellationToken);
+
+            if (deliveryPreference.InAppEnabled)
+            {
+                savedNotifications.Add(new Notification
+                {
+                    UserId = request.UserId,
+                    Title = request.Title.Trim(),
+                    Message = request.Message.Trim(),
+                    Type = request.Type,
+                    Severity = request.Severity,
+                    EntityType = string.IsNullOrWhiteSpace(request.EntityType)
+                        ? null
+                        : request.EntityType.Trim(),
+                    EntityId = request.EntityId,
+                    ActionUrl = string.IsNullOrWhiteSpace(request.ActionUrl)
+                        ? null
+                        : request.ActionUrl.Trim(),
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+            else if (deliveryPreference.PushEnabled)
+            {
+                pushOnlyResponses.Add((
+                    request.UserId,
+                    new NotificationResponse
+                    {
+                        Id = 0,
+                        Title = request.Title.Trim(),
+                        Message = request.Message.Trim(),
+                        Type = request.Type,
+                        Severity = request.Severity,
+                        EntityType = string.IsNullOrWhiteSpace(request.EntityType)
+                            ? null
+                            : request.EntityType.Trim(),
+                        EntityId = request.EntityId,
+                        ActionUrl = string.IsNullOrWhiteSpace(request.ActionUrl)
+                            ? null
+                            : request.ActionUrl.Trim(),
+                        IsRead = true,
+                        CreatedAt = now
+                    }));
+            }
+        }
+
+        var userIds = savedNotifications
+     .Select(x => x.UserId)
+     .Concat(pushOnlyResponses.Select(x => x.UserId))
+     .Distinct()
+     .ToList();
 
         var existingUserIds = await _context.Users
             .AsNoTracking()
@@ -206,19 +231,21 @@ public class NotificationService : INotificationService
             return ApiResponse<List<NotificationResponse>>.Fail($"User not found: {missingUserId}");
         }
 
-        _context.Notifications.AddRange(notifications);
+        if (savedNotifications.Count > 0)
+        {
+            _context.Notifications.AddRange(savedNotifications);
 
-        await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        var savedResponseByUser = savedNotifications
+    .Select(x => new
+    {
+        x.UserId,
+        Response = MapToResponse(x)
+    })
+    .ToList();
 
-        var responseByUser = notifications
-                .Select(x => new
-                {
-                    x.UserId,
-                    Response = MapToResponse(x)
-                })
-                .ToList();
-
-        foreach (var userGroup in responseByUser.GroupBy(x => x.UserId))
+        foreach (var userGroup in savedResponseByUser.GroupBy(x => x.UserId))
         {
             var unreadCount = await _context.Notifications
                 .AsNoTracking()
@@ -233,6 +260,19 @@ public class NotificationService : INotificationService
                     userGroup.Key,
                     item.Response,
                     cancellationToken);
+
+                var deliveryPreference = await _notificationPreferenceService.GetDeliveryPreferenceAsync(
+                    userGroup.Key,
+                    item.Response.Type,
+                    cancellationToken);
+
+                if (deliveryPreference.PushEnabled)
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        userGroup.Key,
+                        item.Response,
+                        cancellationToken);
+                }
             }
 
             await _notificationRealtimeService.SendUnreadCountAsync(
@@ -240,10 +280,16 @@ public class NotificationService : INotificationService
                 unreadCount,
                 cancellationToken);
         }
-
-        var finalResponse = responseByUser
+        foreach (var item in pushOnlyResponses)
+        {
+            await _pushNotificationService.SendToUserAsync(
+                item.UserId,
+                item.Response,
+                cancellationToken);
+        }
+        var finalResponse = savedResponseByUser
             .Select(x => x.Response)
-            .Concat(skippedResponses)
+            .Concat(pushOnlyResponses.Select(x => x.Response))
             .ToList();
 
         return ApiResponse<List<NotificationResponse>>.Ok(finalResponse);

@@ -25,5 +25,10 @@ namespace CarServiceBookingSystem.Application.Interfaces.INotification
             string userId,
             NotificationType type,
             CancellationToken cancellationToken = default);
+
+        Task<NotificationDeliveryPreferenceResponse> GetDeliveryPreferenceAsync(
+            string userId,
+            NotificationType type,
+            CancellationToken cancellationToken = default);
     }
 }
