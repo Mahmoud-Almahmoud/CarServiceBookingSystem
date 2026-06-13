@@ -96,5 +96,6 @@ public static class Permissions
     {
         public const string Send = "Notifications.Send";
         public const string ViewAll = "Notifications.ViewAll";
+        public const string Broadcast = "Notifications.Broadcast";
     }
 }

@@ -241,6 +241,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationCleanupJob, NotificationCleanupJob>();
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<IPushNotificationService, PushNotificationService>();
+        services.AddScoped<INotificationBroadcastService, NotificationBroadcastService>();
 
         return services;
     }
