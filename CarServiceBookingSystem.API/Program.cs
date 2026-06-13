@@ -127,7 +127,11 @@ if (!app.Environment.IsEnvironment("Testing"))
     var roleManager = scope.ServiceProvider
         .GetRequiredService<RoleManager<IdentityRole>>();
 
-    await DbSeeder.SeedAsync(dbContext, userManager, roleManager);
+    var logger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("PortfolioDemoSeeder");
+
+    await DbSeeder.SeedAsync(dbContext, userManager, roleManager, logger);
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();

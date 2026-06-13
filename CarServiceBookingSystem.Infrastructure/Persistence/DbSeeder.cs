@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace CarServiceBookingSystem.Infrastructure.Persistence;
@@ -13,13 +14,17 @@ public static class DbSeeder
     public static async Task SeedAsync(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager)
+        RoleManager<IdentityRole> roleManager,
+        ILogger logger,
+        CancellationToken cancellationToken = default)
     {
         await SeedRolesAsync(roleManager);
         //await SeedAdminUserAsync(userManager);
         await SeedTestUsersAsync(userManager);
         await SeedServicesAsync(context);
         await SeedCarsAsync(context);
+
+        await PortfolioDemoSeeder.SeedPortfolioAsync(context,logger,cancellationToken);
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
