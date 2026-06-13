@@ -37,6 +37,11 @@ namespace CarServiceBookingSystem.API.BackgroundJobs
             "cancel-stale-pending-bookings",
             service => service.CancelStalePendingBookingsAsync(CancellationToken.None),
             Cron.MinuteInterval(5));
+
+            RecurringJob.AddOrUpdate<INotificationCleanupJob>(
+            "delete-old-notifications",
+            job => job.DeleteOldNotificationsAsync(CancellationToken.None),
+            Cron.Daily(3));
         }
     }
 }

@@ -81,6 +81,21 @@ public class MaintenanceController : ControllerBase
         return Ok(ApiResponse<string>.Ok("Booking cleanup completed."));
     }
 
+    [HttpPost("cleanup/notifications")]
+    [Authorize(Policy = Permissions.Maintenance.Manage)]
+    public async Task<IActionResult> CleanupNotifications(
+    [FromServices] INotificationCleanupJob notificationCleanupJob,
+    CancellationToken cancellationToken)
+    {
+        var count = await notificationCleanupJob.DeleteOldNotificationsAsync(cancellationToken);
+        return Ok(new ApiResponse<string>
+        {
+            Success = true,
+            Message = "Notification cleanup completed.",
+            Data = $"{count} notifications has been cleaned up."
+        });
+    }
+
     [HttpPost("cleanup/all")]
     public async Task<IActionResult> CleanupAll(CancellationToken cancellationToken)
     {

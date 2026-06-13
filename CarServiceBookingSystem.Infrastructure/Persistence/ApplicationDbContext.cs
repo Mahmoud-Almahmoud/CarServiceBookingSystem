@@ -49,6 +49,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PromoCodeRedemption> PromoCodeRedemptions { get; set; }
     public DbSet<BookingReview> BookingReviews { get; set; }
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

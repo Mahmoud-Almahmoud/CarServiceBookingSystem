@@ -15,17 +15,20 @@ public class NotificationService : INotificationService
     private readonly ICurrentUserService _currentUserService;
     private readonly IValidator<CreateNotificationRequest> _createValidator;
     private readonly INotificationRealtimeService _notificationRealtimeService;
+    private readonly INotificationPreferenceService _notificationPreferenceService;
 
     public NotificationService(
         ApplicationDbContext context,
         ICurrentUserService currentUserService,
         IValidator<CreateNotificationRequest> createValidator,
-        INotificationRealtimeService notificationRealtimeService)
+        INotificationRealtimeService notificationRealtimeService,
+        INotificationPreferenceService notificationPreferenceService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _createValidator = createValidator;
         _notificationRealtimeService = notificationRealtimeService;
+        _notificationPreferenceService = notificationPreferenceService;
     }
 
     public async Task<ApiResponse<NotificationResponse>> CreateAsync(
@@ -47,6 +50,28 @@ public class NotificationService : INotificationService
         if (!userExists)
         {
             return ApiResponse<NotificationResponse>.Fail("User not found.");
+        }
+
+        var inAppEnabled = await _notificationPreferenceService.IsInAppEnabledAsync(
+            request.UserId,
+            request.Type,
+            cancellationToken);
+
+        if (!inAppEnabled)
+        {
+            return ApiResponse<NotificationResponse>.Ok(new NotificationResponse
+            {
+                Id = 0,
+                Title = request.Title,
+                Message = request.Message,
+                Type = request.Type,
+                Severity = request.Severity,
+                EntityType = request.EntityType,
+                EntityId = request.EntityId,
+                ActionUrl = request.ActionUrl,
+                IsRead = true,
+                CreatedAt = DateTime.UtcNow
+            });
         }
 
         var notification = new Notification
@@ -103,6 +128,7 @@ public class NotificationService : INotificationService
         }
 
         var notifications = new List<Notification>();
+        var skippedResponses = new List<NotificationResponse>();
 
         foreach (var request in requests)
         {
@@ -112,6 +138,30 @@ public class NotificationService : INotificationService
             {
                 var errors = string.Join(", ", validationResult.Errors.Select(x => x.ErrorMessage));
                 return ApiResponse<List<NotificationResponse>>.Fail(errors);
+            }
+
+            var inAppEnabled = await _notificationPreferenceService.IsInAppEnabledAsync(
+                request.UserId,
+                request.Type,
+                cancellationToken);
+
+            if (!inAppEnabled)
+            {
+                skippedResponses.Add(new NotificationResponse
+                {
+                    Id = 0,
+                    Title = request.Title,
+                    Message = request.Message,
+                    Type = request.Type,
+                    Severity = request.Severity,
+                    EntityType = request.EntityType,
+                    EntityId = request.EntityId,
+                    ActionUrl = request.ActionUrl,
+                    IsRead = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                continue;
             }
 
             notifications.Add(new Notification
@@ -131,6 +181,11 @@ public class NotificationService : INotificationService
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        if (notifications.Count == 0)
+        {
+            return ApiResponse<List<NotificationResponse>>.Ok(skippedResponses);
         }
 
         var userIds = notifications
@@ -186,7 +241,12 @@ public class NotificationService : INotificationService
                 cancellationToken);
         }
 
-        return ApiResponse<List<NotificationResponse>>.Ok(responseByUser.Select(x => x.Response).ToList());
+        var finalResponse = responseByUser
+            .Select(x => x.Response)
+            .Concat(skippedResponses)
+            .ToList();
+
+        return ApiResponse<List<NotificationResponse>>.Ok(finalResponse);
     }
 
     public async Task<ApiResponse<PagedResponse<NotificationResponse>>> GetMyNotificationsAsync(
