@@ -13,6 +13,7 @@ using CarServiceBookingSystem.Application.Interfaces.IPayments;
 using CarServiceBookingSystem.Domain.Entities;
 using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
+using CarServiceBookingSystem.Infrastructure.Services.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -31,6 +32,7 @@ public class BookingService : IBookingService
     private readonly ICancellationPolicyRuleService _cancellationPolicyRuleService;
     private readonly IPromoCodeService _promoCodeService;
     private readonly INotificationService _notificationService;
+    private readonly INotificationAudienceService _notificationAudienceService;
     private readonly ILogger<BookingService> _logger;
 
     public BookingService(
@@ -45,6 +47,7 @@ public class BookingService : IBookingService
         ICancellationPolicyRuleService cancellationPolicyRuleService,
         IPromoCodeService promoCodeService,
         INotificationService notificationService,
+        INotificationAudienceService notificationAudienceService,
         ILogger<BookingService> logger)
     {
         _context = context;
@@ -58,6 +61,7 @@ public class BookingService : IBookingService
         _cancellationPolicyRuleService = cancellationPolicyRuleService;
         _promoCodeService = promoCodeService;
         _notificationService = notificationService;
+        _notificationAudienceService = notificationAudienceService;
         _logger = logger;
     }
     
@@ -178,6 +182,17 @@ public class BookingService : IBookingService
                 booking.Id,
                 $"/bookings/{booking.Id}",
             cancellationToken);
+
+
+        //await NotifyAdminsAsync(
+        //    title: "New booking created",
+        //    message: $"Booking #{booking.Id} was created and is pending payment.",
+        //    type: NotificationType.BookingCreated,
+        //    severity: NotificationSeverity.Info,
+        //    entityType: NotificationEntityTypes.Booking,
+        //    entityId: booking.Id,
+        //    actionUrl: $"/admin/bookings/{booking.Id}",
+        //    cancellationToken);
 
         return new ApiResponse<BookingResponse>
         {
@@ -739,5 +754,41 @@ public class BookingService : IBookingService
                 "Failed to create notification for UserId {UserId}, Type {NotificationType}, EntityType {EntityType}, EntityId {EntityId}",
                 userId, type, entityType, entityId);
         }
+    }
+
+    //notify all admins
+    private async Task NotifyAdminsAsync(
+    string title,
+    string message,
+    NotificationType type,
+    NotificationSeverity severity,
+    string? entityType,
+    int? entityId,
+    string? actionUrl,
+    CancellationToken cancellationToken)
+    {
+        var adminUserIds = await _notificationAudienceService.GetAdminUserIdsAsync(
+            cancellationToken);
+
+        if (adminUserIds.Count == 0)
+        {
+            return;
+        }
+
+        var requests = adminUserIds
+            .Select(userId => new CreateNotificationRequest
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                Type = type,
+                Severity = severity,
+                EntityType = entityType,
+                EntityId = entityId,
+                ActionUrl = actionUrl
+            })
+            .ToList();
+
+        await _notificationService.CreateManyAsync(requests, cancellationToken);
     }
 }

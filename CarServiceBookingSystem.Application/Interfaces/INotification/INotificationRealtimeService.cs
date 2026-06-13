@@ -23,4 +23,9 @@ public interface INotificationRealtimeService
         string userId,
         NotificationsReadAllResponse response,
         CancellationToken cancellationToken = default);
+
+    Task SendGroupNotificationAsync(
+    string groupName,
+    NotificationResponse notification,
+    CancellationToken cancellationToken = default);
 }

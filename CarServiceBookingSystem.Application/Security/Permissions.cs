@@ -89,6 +89,7 @@ public static class Permissions
     {
         public const string View = "Technicians.View";
         public const string Manage = "Technicians.Manage";
+        public const string ViewAssignedBookings = "Technicians.ViewAssignedBookings";
     }
 
     public static class Notifications

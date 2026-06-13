@@ -233,6 +233,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingReceiptService, BookingReceiptService>();
         services.AddScoped<IBookingReviewService, BookingReviewService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationAudienceService, NotificationAudienceService>();
 
         return services;
     }

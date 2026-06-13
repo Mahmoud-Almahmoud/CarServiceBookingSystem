@@ -63,4 +63,16 @@ public class NotificationRealtimeService : INotificationRealtimeService
                 response,
                 cancellationToken);
     }
+
+    public async Task SendGroupNotificationAsync(
+    string groupName,
+    NotificationResponse notification,
+    CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group(groupName)
+            .SendAsync(
+                NotificationHubEvents.NotificationReceived,
+                notification,
+                cancellationToken);
+    }
 }
