@@ -258,6 +258,7 @@ public static class DependencyInjection
         services.AddScoped<IAiServiceCatalogQuery, AiServiceCatalogQuery>();
         services.AddScoped<IAiConversationRepository, AiConversationRepository>();
         services.AddScoped<IAiAnalyticsQuery, AiAnalyticsQuery>();
+        services.AddScoped<IAiAdvisorSettingsRepository, AiAdvisorSettingsRepository>();
 
         return services;
     }

@@ -54,6 +54,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiConversationMessage> AiConversationMessages => Set<AiConversationMessage>();
     public DbSet<AiServiceRecommendation> AiServiceRecommendations => Set<AiServiceRecommendation>();
+    public DbSet<AiAdvisorSetting> AiAdvisorSettings => Set<AiAdvisorSetting>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

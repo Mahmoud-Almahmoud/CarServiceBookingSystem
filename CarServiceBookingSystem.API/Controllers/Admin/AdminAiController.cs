@@ -15,10 +15,13 @@ namespace CarServiceBookingSystem.API.Controllers.Admin;
 public sealed class AdminAiController : ControllerBase
 {
     private readonly IAiAnalyticsService _analyticsService;
+    private readonly IAiAdvisorSettingsService _settingsService;
 
-    public AdminAiController(IAiAnalyticsService analyticsService)
+    public AdminAiController(IAiAnalyticsService analyticsService,
+        IAiAdvisorSettingsService settingsService)
     {
         _analyticsService = analyticsService;
+        _settingsService = settingsService;
     }
 
     [HttpGet("analytics/overview")]
@@ -55,5 +58,29 @@ public sealed class AdminAiController : ControllerBase
             cancellationToken);
 
         return Ok(ApiResponse<List<AiDailyUsageDto>>.Ok(result));
+    }
+
+    [HttpGet("settings")]
+    [ProducesResponseType(typeof(ApiResponse<AiAdvisorSettingsDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AiAdvisorSettingsDto>>> GetSettings(
+    CancellationToken cancellationToken)
+    {
+        var result = await _settingsService.GetAsync(cancellationToken);
+
+        return Ok(ApiResponse<AiAdvisorSettingsDto>.Ok(result));
+    }
+
+    [HttpPut("settings")]
+    [ProducesResponseType(typeof(ApiResponse<AiAdvisorSettingsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<AiAdvisorSettingsDto>>> UpdateSettings(
+        [FromBody] UpdateAiAdvisorSettingsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _settingsService.UpdateAsync(
+            request,
+            cancellationToken);
+
+        return Ok(ApiResponse<AiAdvisorSettingsDto>.Ok(result));
     }
 }
