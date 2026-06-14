@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Application.DTOs.Ai;
 using CarServiceBookingSystem.Application.Interfaces.IAi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CarServiceBookingSystem.API.Controllers.Ai;
 
@@ -21,6 +22,7 @@ public sealed class AiServiceAdvisorController : ControllerBase
     }
 
     [HttpPost("chat")]
+    [EnableRateLimiting("AiServiceAdvisorPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ServiceAdvisorResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
