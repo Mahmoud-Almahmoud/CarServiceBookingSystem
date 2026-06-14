@@ -5,7 +5,7 @@ using CarServiceBookingSystem.Domain.Enums;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace CarServiceBookingSystem.Infrastructure.Ai;
+namespace CarServiceBookingSystem.Infrastructure.Services.Ai;
 
 public sealed class AiConversationRepository : IAiConversationRepository
 {
@@ -241,6 +241,9 @@ public sealed class AiConversationRepository : IAiConversationRepository
                         Reason = r.Reason,
                         Confidence = r.Confidence,
                         BookingUrl = r.BookingUrl,
+                        FeedbackValue = r.FeedbackValue != null ? r.FeedbackValue.ToString() : null,
+                        FeedbackComment = r.FeedbackComment,
+                        FeedbackCreatedAtUtc = r.FeedbackCreatedAtUtc,
                         CreatedAtUtc = r.CreatedAt
                     })
                     .ToList()
@@ -265,6 +268,64 @@ public sealed class AiConversationRepository : IAiConversationRepository
                 cancellationToken);
 
         return affectedRows > 0;
+    }
+
+    public async Task<AiServiceRecommendationHistoryDto?> SubmitRecommendationFeedbackAsync(
+    string userId,
+    int recommendationId,
+    string feedbackValue,
+    string? comment,
+    CancellationToken cancellationToken = default)
+    {
+        var parsedFeedback = ParseFeedbackValue(feedbackValue);
+
+        var recommendation = await _context.AiServiceRecommendations
+            .Include(x => x.Conversation)
+            .Where(x => x.Id == recommendationId &&
+                        x.Conversation.UserId == userId &&
+                        !x.Conversation.IsArchived)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (recommendation is null)
+            return null;
+
+        recommendation.FeedbackValue = parsedFeedback;
+        recommendation.FeedbackComment = string.IsNullOrWhiteSpace(comment)
+            ? null
+            : comment.Trim();
+
+        recommendation.FeedbackCreatedAtUtc = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new AiServiceRecommendationHistoryDto
+        {
+            Id = recommendation.Id,
+            ConversationId = recommendation.ConversationId,
+            AssistantMessageId = recommendation.AssistantMessageId,
+            ServiceId = recommendation.ServiceId,
+            ServiceNameSnapshot = recommendation.ServiceNameSnapshot,
+            Reason = recommendation.Reason,
+            Confidence = recommendation.Confidence,
+            BookingUrl = recommendation.BookingUrl,
+            FeedbackValue = recommendation.FeedbackValue?.ToString(),
+            FeedbackComment = recommendation.FeedbackComment,
+            FeedbackCreatedAtUtc = recommendation.FeedbackCreatedAtUtc,
+            CreatedAtUtc = recommendation.CreatedAt
+        };
+    }
+
+    private static AiRecommendationFeedbackValue ParseFeedbackValue(string value)
+    {
+        if (Enum.TryParse<AiRecommendationFeedbackValue>(
+                value,
+                ignoreCase: true,
+                out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new ArgumentException("Feedback value must be Helpful or NotHelpful.");
     }
 
     private static string? TrimPreview(string? value)

@@ -42,4 +42,11 @@ public interface IAiConversationRepository
         string userId,
         int conversationId,
         CancellationToken cancellationToken = default);
+
+    Task<AiServiceRecommendationHistoryDto?> SubmitRecommendationFeedbackAsync(
+    string userId,
+    int recommendationId,
+    string feedbackValue,
+    string? comment,
+    CancellationToken cancellationToken = default);
 }

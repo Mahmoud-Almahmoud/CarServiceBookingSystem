@@ -35,5 +35,14 @@ public sealed class AiServiceRecommendationConfiguration : IEntityTypeConfigurat
         builder.HasIndex(x => x.ConversationId);
 
         builder.HasIndex(x => x.ServiceId);
+
+        builder.Property(x => x.FeedbackValue)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        builder.Property(x => x.FeedbackComment)
+            .HasMaxLength(1000);
+
+        builder.HasIndex(x => x.FeedbackValue);
     }
 }

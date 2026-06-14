@@ -17,6 +17,11 @@ public sealed class AiServiceRecommendationHistoryDto
     public double Confidence { get; init; }
 
     public string BookingUrl { get; init; } = string.Empty;
+    public string? FeedbackValue { get; init; }
+
+    public string? FeedbackComment { get; init; }
+
+    public DateTime? FeedbackCreatedAtUtc { get; init; }
 
     public DateTime CreatedAtUtc { get; init; }
 }

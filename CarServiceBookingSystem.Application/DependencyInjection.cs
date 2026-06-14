@@ -1,9 +1,4 @@
-﻿using CarServiceBookingSystem.Application.DTOs.Auth;
-using CarServiceBookingSystem.Application.DTOs.Bookings;
-using CarServiceBookingSystem.Application.DTOs.Cars;
-using CarServiceBookingSystem.Application.DTOs.Services;
-using CarServiceBookingSystem.Application.Interfaces;
-using CarServiceBookingSystem.Application.Interfaces.IAi;
+﻿using CarServiceBookingSystem.Application.Interfaces.IAi;
 using CarServiceBookingSystem.Application.Services.Ai;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +14,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAiServiceAdvisorService, AiServiceAdvisorService>();
         services.AddScoped<IAiConversationService, AiConversationService>();
+        services.AddScoped<IAiRecommendationFeedbackService, AiRecommendationFeedbackService>();
 
         return services;
     }

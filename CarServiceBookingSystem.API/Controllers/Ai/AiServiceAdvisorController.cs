@@ -16,13 +16,16 @@ public sealed class AiServiceAdvisorController : ControllerBase
 {
     private readonly IAiServiceAdvisorService _advisorService;
     private readonly IAiConversationService _conversationService;
+    private readonly IAiRecommendationFeedbackService _feedbackService;
 
     public AiServiceAdvisorController(
         IAiServiceAdvisorService advisorService,
-        IAiConversationService conversationService)
+        IAiConversationService conversationService,
+        IAiRecommendationFeedbackService feedbackService)
     {
         _advisorService = advisorService;
         _conversationService = conversationService;
+        _feedbackService = feedbackService;
     }
 
     [HttpPost("chat")]
@@ -86,5 +89,32 @@ public sealed class AiServiceAdvisorController : ControllerBase
             return NotFound(ApiResponse<bool>.Fail("Conversation not found."));
 
         return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    [HttpPost("recommendations/{recommendationId:int}/feedback")]
+    [ProducesResponseType(typeof(ApiResponse<AiServiceRecommendationHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<AiServiceRecommendationHistoryDto>>> SubmitRecommendationFeedback(
+    [FromRoute] int recommendationId,
+    [FromBody] SubmitAiRecommendationFeedbackRequest request,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _feedbackService.SubmitFeedbackAsync(
+                recommendationId,
+                request,
+                cancellationToken);
+
+            if (result is null)
+                return NotFound(ApiResponse<AiServiceRecommendationHistoryDto>.Fail("Recommendation not found."));
+
+            return Ok(ApiResponse<AiServiceRecommendationHistoryDto>.Ok(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<AiServiceRecommendationHistoryDto>.Fail(ex.Message));
+        }
     }
 }

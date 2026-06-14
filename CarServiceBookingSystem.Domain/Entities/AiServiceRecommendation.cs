@@ -1,4 +1,6 @@
-﻿namespace CarServiceBookingSystem.Domain.Entities;
+﻿using CarServiceBookingSystem.Domain.Enums;
+
+namespace CarServiceBookingSystem.Domain.Entities;
 
 public class AiServiceRecommendation : BaseIdEntity
 {
@@ -19,4 +21,10 @@ public class AiServiceRecommendation : BaseIdEntity
     public double Confidence { get; set; }
 
     public string BookingUrl { get; set; } = string.Empty;
+
+    public AiRecommendationFeedbackValue? FeedbackValue { get; set; }
+
+    public string? FeedbackComment { get; set; }
+
+    public DateTime? FeedbackCreatedAtUtc { get; set; }
 }
