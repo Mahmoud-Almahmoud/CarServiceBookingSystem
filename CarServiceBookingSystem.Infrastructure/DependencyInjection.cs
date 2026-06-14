@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Common.Interfaces;
 using CarServiceBookingSystem.Application.Interfaces;
+using CarServiceBookingSystem.Application.Interfaces.IAi;
 using CarServiceBookingSystem.Application.Interfaces.IAuth;
 using CarServiceBookingSystem.Application.Interfaces.IBackgrounJobs;
 using CarServiceBookingSystem.Application.Interfaces.IBookings;
@@ -20,6 +21,7 @@ using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
 using CarServiceBookingSystem.Infrastructure.Persistence;
 using CarServiceBookingSystem.Infrastructure.Services;
+using CarServiceBookingSystem.Infrastructure.Services.Ai;
 using CarServiceBookingSystem.Infrastructure.Services.Auth;
 using CarServiceBookingSystem.Infrastructure.Services.BackgroundJobs;
 using CarServiceBookingSystem.Infrastructure.Services.Bookings;
@@ -77,8 +79,9 @@ public static class DependencyInjection
         //services.Configure<OpenRouteServiceOptions>(configuration.GetSection("OpenRouteService"));
         services.Configure<NotificationCleanupOptions>(configuration.GetSection("NotificationCleanup"));
         services.Configure<WebPushOptions>(configuration.GetSection("WebPush"));
+        services.Configure<AiAdvisorOptions>(configuration.GetSection("AiAdvisor"));
 
-        
+
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection("Jwt"))
@@ -187,6 +190,16 @@ public static class DependencyInjection
                 .Value;
 
             client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
+        services.AddHttpClient<IAiChatProvider, OllamaChatProvider>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<AiAdvisorOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
 
         StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
