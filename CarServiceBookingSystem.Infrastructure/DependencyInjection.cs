@@ -192,8 +192,22 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseUrl);
         });
 
-        services.AddHttpClient("OllamaAiClient");
-        services.AddScoped<IAiChatProvider, OllamaChatProvider>();
+
+        var aiProvider = configuration["AiAdvisor:Provider"] ?? "Ollama";
+
+        if (aiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IAiChatProvider, OpenAiChatProvider>();
+        }
+        else if (aiProvider.Equals("DeepSeek", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IAiChatProvider, DeepSeekChatProvider>();
+        }
+        else
+        {
+            services.AddHttpClient("OllamaAiClient");
+            services.AddScoped<IAiChatProvider, OllamaChatProvider>();
+        }
 
         services.AddHttpClient<IAiProviderStatusProvider, OllamaProviderStatusProvider>((serviceProvider, client) =>
         {
@@ -204,6 +218,9 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(Math.Min(options.TimeoutSeconds, 15));
         });
+
+        //services.AddHttpClient("OllamaAiClient");
+        //services.AddScoped<IAiChatProvider, OllamaChatProvider>();
 
         StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
 

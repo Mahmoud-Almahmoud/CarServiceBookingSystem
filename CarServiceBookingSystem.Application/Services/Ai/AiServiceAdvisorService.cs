@@ -46,14 +46,14 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
         ServiceAdvisorChatRequest request,
         CancellationToken cancellationToken = default)
     {
-        var userId = _currentUserService.UserId;
+        var userId = ResolveConversationOwnerId(request);
 
         if (string.IsNullOrWhiteSpace(userId))
         {
             return new ServiceAdvisorResponse
             {
                 CanRecommend = false,
-                Reply = "User is not authenticated."
+                Reply = "Please refresh the page and try again."
             };
         }
 
@@ -480,5 +480,23 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
         public string Reason { get; init; } = string.Empty;
 
         public double Confidence { get; init; }
+    }
+
+    private string? ResolveConversationOwnerId(ServiceAdvisorChatRequest request)
+    {
+        var authenticatedUserId = _currentUserService.UserId;
+
+        if (!string.IsNullOrWhiteSpace(authenticatedUserId))
+            return authenticatedUserId;
+
+        if (string.IsNullOrWhiteSpace(request.AnonymousSessionId))
+            return null;
+
+        var sessionId = request.AnonymousSessionId.Trim();
+
+        if (sessionId.Length > 100)
+            return null;
+
+        return $"anonymous:{sessionId}";
     }
 }

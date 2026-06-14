@@ -28,6 +28,7 @@ public sealed class AiServiceAdvisorController : ControllerBase
         _feedbackService = feedbackService;
     }
 
+    [AllowAnonymous]
     [HttpPost("chat")]
     [EnableRateLimiting("AiServiceAdvisorPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ServiceAdvisorResponse>), StatusCodes.Status200OK)]

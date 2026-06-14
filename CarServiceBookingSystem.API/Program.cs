@@ -74,14 +74,25 @@ builder.Services.AddRateLimiter(options =>
     {
         var userId = httpContext.User.FindFirst("uid")?.Value
             ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? httpContext.Connection.RemoteIpAddress?.ToString()
-            ?? "anonymous";
+            ?? httpContext.User.FindFirst("sub")?.Value;
+
+        var anonymousSessionId = httpContext.Request.Headers["X-Anonymous-Session-Id"]
+            .FirstOrDefault();
+
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown-ip";
+
+        var partitionKey = !string.IsNullOrWhiteSpace(userId)
+            ? $"user:{userId}"
+            : !string.IsNullOrWhiteSpace(anonymousSessionId)
+                ? $"anon:{anonymousSessionId}:{ip}"
+                : $"ip:{ip}";
 
         return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: userId,
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = string.IsNullOrWhiteSpace(userId) ? 5 : 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
