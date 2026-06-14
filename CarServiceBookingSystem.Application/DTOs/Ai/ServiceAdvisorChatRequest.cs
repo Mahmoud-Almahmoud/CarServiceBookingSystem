@@ -4,6 +4,8 @@ namespace CarServiceBookingSystem.Application.DTOs.Ai;
 
 public sealed class ServiceAdvisorChatRequest
 {
+    public int? ConversationId { get; init; }
+
     [Required]
     [StringLength(2000, MinimumLength = 3)]
     public string Message { get; init; } = string.Empty;

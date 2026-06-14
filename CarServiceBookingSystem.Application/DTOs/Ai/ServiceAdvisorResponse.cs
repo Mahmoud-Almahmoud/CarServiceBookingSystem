@@ -2,6 +2,10 @@
 
 public sealed class ServiceAdvisorResponse
 {
+    public int? ConversationId { get; init; }
+
+    public int? AssistantMessageId { get; init; }
+
     public string Reply { get; init; } = string.Empty;
 
     public string Urgency { get; init; } = "Unknown";

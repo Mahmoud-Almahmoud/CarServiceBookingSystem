@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.DTOs.Ai;
 using CarServiceBookingSystem.Application.Interfaces.IAi;
+using CarServiceBookingSystem.Application.Interfaces.IContext;
 using CarServiceBookingSystem.Application.Options;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -8,7 +9,9 @@ namespace CarServiceBookingSystem.Application.Services.Ai;
 
 public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
 {
+    private readonly ICurrentUserService _currentUserService;
     private readonly IAiServiceCatalogQuery _serviceCatalogQuery;
+    private readonly IAiConversationRepository _conversationRepository;
     private readonly IAiChatProvider _aiChatProvider;
     private readonly AiAdvisorOptions _options;
 
@@ -18,11 +21,15 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
     };
 
     public AiServiceAdvisorService(
+        ICurrentUserService currentUserService,
         IAiServiceCatalogQuery serviceCatalogQuery,
+        IAiConversationRepository conversationRepository,
         IAiChatProvider aiChatProvider,
         IOptions<AiAdvisorOptions> options)
     {
+        _currentUserService = currentUserService;
         _serviceCatalogQuery = serviceCatalogQuery;
+        _conversationRepository = conversationRepository;
         _aiChatProvider = aiChatProvider;
         _options = options.Value;
     }
@@ -31,10 +38,42 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
         ServiceAdvisorChatRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!_options.Enabled)
+        var userId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(userId))
         {
             return new ServiceAdvisorResponse
             {
+                CanRecommend = false,
+                Reply = "User is not authenticated."
+            };
+        }
+
+        var conversation = await _conversationRepository.GetOrCreateConversationAsync(
+            userId,
+            request.ConversationId,
+            request.CarId,
+            request.Message,
+            cancellationToken);
+
+        await _conversationRepository.AddMessageAsync(
+            conversation.Id,
+            "User",
+            request.Message,
+            cancellationToken);
+
+        if (!_options.Enabled)
+        {
+            var disabledAssistantMessage = await _conversationRepository.AddMessageAsync(
+                conversation.Id,
+                "Assistant",
+                "AI service advisor is currently disabled.",
+                cancellationToken);
+
+            return new ServiceAdvisorResponse
+            {
+                ConversationId = conversation.Id,
+                AssistantMessageId = disabledAssistantMessage.Id,
                 CanRecommend = false,
                 Reply = "AI service advisor is currently disabled."
             };
@@ -45,21 +84,43 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
 
         if (services.Count == 0)
         {
+            var noServicesAssistantMessage = await _conversationRepository.AddMessageAsync(
+                conversation.Id,
+                "Assistant",
+                "No active services are available right now.",
+                cancellationToken);
+
             return new ServiceAdvisorResponse
             {
+                ConversationId = conversation.Id,
+                AssistantMessageId = noServicesAssistantMessage.Id,
                 CanRecommend = false,
                 Reply = "No active services are available right now."
             };
         }
 
+        var recentMessages = await _conversationRepository.GetRecentMessagesAsync(
+            conversation.Id,
+            take: 10,
+            cancellationToken);
+
         var serviceCatalogJson = JsonSerializer.Serialize(
             services,
+            JsonOptions);
+
+        var recentMessagesJson = JsonSerializer.Serialize(
+            recentMessages.Select(x => new
+            {
+                x.Role,
+                x.Content
+            }),
             JsonOptions);
 
         var systemPrompt = BuildSystemPrompt();
 
         var userPrompt = BuildUserPrompt(
             request.Message,
+            recentMessagesJson,
             serviceCatalogJson);
 
         var rawAiJson = await _aiChatProvider.GetJsonChatCompletionAsync(
@@ -71,10 +132,21 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
 
         if (modelResult is null)
         {
+            const string fallbackReply =
+                "I could not safely match your symptoms to a service. Please describe the issue with more details.";
+
+            var fallbackAssistantMessage = await _conversationRepository.AddMessageAsync(
+                conversation.Id,
+                "Assistant",
+                fallbackReply,
+                cancellationToken);
+
             return new ServiceAdvisorResponse
             {
+                ConversationId = conversation.Id,
+                AssistantMessageId = fallbackAssistantMessage.Id,
                 CanRecommend = false,
-                Reply = "I could not safely match your symptoms to a service. Please describe the issue with more details.",
+                Reply = fallbackReply,
                 FollowUpQuestions =
                 [
                     "When does the problem happen?",
@@ -109,12 +181,39 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
             })
             .ToList();
 
+        var reply = string.IsNullOrWhiteSpace(modelResult.Reply)
+            ? "Based on your description, these services may help."
+            : modelResult.Reply;
+
+        var assistantMessage = await _conversationRepository.AddMessageAsync(
+            conversation.Id,
+            "Assistant",
+            reply,
+            cancellationToken);
+
+        var recommendations = suggestions
+            .Select(x => new CreateAiRecommendationDto
+            {
+                ServiceId = x.ServiceId,
+                ServiceNameSnapshot = x.ServiceName,
+                Reason = x.Reason,
+                Confidence = x.Confidence,
+                BookingUrl = x.BookingUrl
+            })
+            .ToList();
+
+        await _conversationRepository.AddRecommendationsAsync(
+            conversation.Id,
+            assistantMessage.Id,
+            recommendations,
+            cancellationToken);
+
         return new ServiceAdvisorResponse
         {
+            ConversationId = conversation.Id,
+            AssistantMessageId = assistantMessage.Id,
             CanRecommend = suggestions.Count > 0,
-            Reply = string.IsNullOrWhiteSpace(modelResult.Reply)
-                ? "Based on your description, these services may help."
-                : modelResult.Reply,
+            Reply = reply,
             Urgency = NormalizeUrgency(modelResult.Urgency),
             SuggestedServices = suggestions,
             FollowUpQuestions = modelResult.FollowUpQuestions
@@ -138,6 +237,7 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
         - Never say the issue is confirmed.
         - If the issue may affect braking, steering, overheating, smoke, fuel smell, battery fire, or engine failure, set urgency to High.
         - If there is not enough information, ask follow-up questions.
+        - Use recent conversation history only as context.
         - Return valid JSON only.
         - Do not wrap JSON in markdown.
         - Do not include explanations outside JSON.
@@ -162,11 +262,15 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
 
     private static string BuildUserPrompt(
         string message,
+        string recentMessagesJson,
         string serviceCatalogJson)
     {
         return $$"""
-        User car problem:
+        Current user message:
         {{message}}
+
+        Recent conversation messages JSON:
+        {{recentMessagesJson}}
 
         Available service catalog JSON:
         {{serviceCatalogJson}}

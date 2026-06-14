@@ -16,6 +16,7 @@ using CarServiceBookingSystem.Application.Interfaces.ITechnicians;
 using CarServiceBookingSystem.Application.Interfaces.IUsers;
 using CarServiceBookingSystem.Application.Interfaces.IUtils;
 using CarServiceBookingSystem.Application.Options;
+using CarServiceBookingSystem.Infrastructure.Ai;
 using CarServiceBookingSystem.Infrastructure.Context;
 using CarServiceBookingSystem.Infrastructure.Identity;
 using CarServiceBookingSystem.Infrastructure.Payments;
@@ -256,6 +257,7 @@ public static class DependencyInjection
         services.AddScoped<IPushNotificationService, PushNotificationService>();
         services.AddScoped<INotificationBroadcastService, NotificationBroadcastService>();
         services.AddScoped<IAiServiceCatalogQuery, AiServiceCatalogQuery>();
+        services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 
         return services;
     }
