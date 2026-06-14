@@ -46,6 +46,8 @@ builder.Services.AddResponseCompression();
 
 builder.Services.AddRateLimiter(options =>
 {
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -68,8 +70,36 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         }));
 
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("AiServiceAdvisorPolicy", httpContext =>
+    {
+        var userId = httpContext.User.FindFirst("uid")?.Value
+            ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? httpContext.User.FindFirst("sub")?.Value;
+
+        var anonymousSessionId = httpContext.Request.Headers["X-Anonymous-Session-Id"]
+            .FirstOrDefault();
+
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown-ip";
+
+        var partitionKey = !string.IsNullOrWhiteSpace(userId)
+            ? $"user:{userId}"
+            : !string.IsNullOrWhiteSpace(anonymousSessionId)
+                ? $"anon:{anonymousSessionId}:{ip}"
+                : $"ip:{ip}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = string.IsNullOrWhiteSpace(userId) ? 5 : 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
 });
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>

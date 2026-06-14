@@ -51,6 +51,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<AiConversation> AiConversations => Set<AiConversation>();
+    public DbSet<AiConversationMessage> AiConversationMessages => Set<AiConversationMessage>();
+    public DbSet<AiServiceRecommendation> AiServiceRecommendations => Set<AiServiceRecommendation>();
+    public DbSet<AiAdvisorSetting> AiAdvisorSettings => Set<AiAdvisorSetting>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

@@ -4,6 +4,7 @@ using CarServiceBookingSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarServiceBookingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260614091847_AddAiRecommendationFeedback")]
+    partial class AddAiRecommendationFeedback
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,93 +24,6 @@ namespace CarServiceBookingSystem.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.AiAdvisorSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BaseUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("BlockUnrelatedQuestions")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("BookingPathTemplate")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("EnablePromptInjectionFilter")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("MaxPromptLength")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MaxSuggestions")
-                        .HasColumnType("int");
-
-                    b.Property<double>("MinimumRecommendationConfidence")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Model")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("RateLimitPerMinute")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TimeoutSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AiAdvisorSettings", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            BaseUrl = "http://localhost:11434",
-                            BlockUnrelatedQuestions = true,
-                            BookingPathTemplate = "/app/bookings/new?serviceId={0}",
-                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            EnablePromptInjectionFilter = true,
-                            Enabled = true,
-                            MaxPromptLength = 2000,
-                            MaxSuggestions = 3,
-                            MinimumRecommendationConfidence = 0.45000000000000001,
-                            Model = "llama3.1:8b",
-                            Provider = "Ollama",
-                            RateLimitPerMinute = 10,
-                            TimeoutSeconds = 60,
-                            UpdatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        });
-                });
 
             modelBuilder.Entity("CarServiceBookingSystem.Domain.Entities.AiConversation", b =>
                 {
