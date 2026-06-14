@@ -1,15 +1,11 @@
 ﻿using System.Text.RegularExpressions;
 using CarServiceBookingSystem.Application.DTOs.Ai;
 using CarServiceBookingSystem.Application.Interfaces.Ai;
-using CarServiceBookingSystem.Application.Options;
-using Microsoft.Extensions.Options;
 
 namespace CarServiceBookingSystem.Application.Services.Ai;
 
 public sealed partial class AiSafetyService : IAiSafetyService
 {
-    private readonly AiAdvisorOptions _options;
-
     private static readonly string[] CarKeywords =
     [
         "car", "vehicle", "engine", "brake", "brakes", "oil", "battery",
@@ -40,28 +36,25 @@ public sealed partial class AiSafetyService : IAiSafetyService
         "disregard"
     ];
 
-    public AiSafetyService(IOptions<AiAdvisorOptions> options)
-    {
-        _options = options.Value;
-    }
-
-    public AiSafetyCheckResult CheckUserMessage(string message)
+    public AiSafetyCheckResult CheckUserMessage(
+        string message,
+        AiAdvisorSettingsDto settings)
     {
         if (string.IsNullOrWhiteSpace(message))
             return AiSafetyCheckResult.Block("Message is required.");
 
         var normalized = Normalize(message);
 
-        if (normalized.Length > _options.MaxPromptLength)
-            return AiSafetyCheckResult.Block($"Message is too long. Maximum length is {_options.MaxPromptLength} characters.");
+        if (normalized.Length > settings.MaxPromptLength)
+            return AiSafetyCheckResult.Block($"Message is too long. Maximum length is {settings.MaxPromptLength} characters.");
 
-        if (_options.EnablePromptInjectionFilter &&
+        if (settings.EnablePromptInjectionFilter &&
             InjectionPatterns.Any(x => normalized.Contains(x, StringComparison.OrdinalIgnoreCase)))
         {
             return AiSafetyCheckResult.Block("The message contains instruction-manipulation text. Please describe the car issue only.");
         }
 
-        if (_options.BlockUnrelatedQuestions &&
+        if (settings.BlockUnrelatedQuestions &&
             !CarKeywords.Any(x => normalized.Contains(x, StringComparison.OrdinalIgnoreCase)))
         {
             return AiSafetyCheckResult.Block("Please describe a car problem or car service question.");
@@ -70,7 +63,9 @@ public sealed partial class AiSafetyService : IAiSafetyService
         return AiSafetyCheckResult.Allow();
     }
 
-    public string SanitizeUserMessage(string message)
+    public string SanitizeUserMessage(
+        string message,
+        AiAdvisorSettingsDto settings)
     {
         var value = message.Trim();
 
@@ -80,9 +75,9 @@ public sealed partial class AiSafetyService : IAiSafetyService
         value = MultipleSpacesRegex()
             .Replace(value, " ");
 
-        return value.Length <= _options.MaxPromptLength
+        return value.Length <= settings.MaxPromptLength
             ? value
-            : value[.._options.MaxPromptLength];
+            : value[..settings.MaxPromptLength];
     }
 
     private static string Normalize(string value)

@@ -192,15 +192,8 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseUrl);
         });
 
-        services.AddHttpClient<IAiChatProvider, OllamaChatProvider>((serviceProvider, client) =>
-        {
-            var options = serviceProvider
-                .GetRequiredService<IOptions<AiAdvisorOptions>>()
-                .Value;
-
-            client.BaseAddress = new Uri(options.BaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-        });
+        services.AddHttpClient("OllamaAiClient");
+        services.AddScoped<IAiChatProvider, OllamaChatProvider>();
 
         StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
 
@@ -259,6 +252,7 @@ public static class DependencyInjection
         services.AddScoped<IAiConversationRepository, AiConversationRepository>();
         services.AddScoped<IAiAnalyticsQuery, AiAnalyticsQuery>();
         services.AddScoped<IAiAdvisorSettingsRepository, AiAdvisorSettingsRepository>();
+        services.AddScoped<IAiAdvisorRuntimeSettingsProvider, AiAdvisorRuntimeSettingsProvider>();
 
         return services;
     }

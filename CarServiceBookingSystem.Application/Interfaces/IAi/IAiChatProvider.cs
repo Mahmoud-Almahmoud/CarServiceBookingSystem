@@ -3,7 +3,10 @@
 public interface IAiChatProvider
 {
     Task<string> GetJsonChatCompletionAsync(
-        string systemPrompt,
-        string userPrompt,
-        CancellationToken cancellationToken = default);
+     string baseUrl,
+     string model,
+     int timeoutSeconds,
+     string systemPrompt,
+     string userPrompt,
+     CancellationToken cancellationToken = default);
 }

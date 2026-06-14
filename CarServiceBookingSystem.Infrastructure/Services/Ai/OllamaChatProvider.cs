@@ -1,6 +1,5 @@
-﻿using CarServiceBookingSystem.Application.Interfaces.IAi;
-using CarServiceBookingSystem.Application.Options;
-using Microsoft.Extensions.Options;
+﻿using CarServiceBookingSystem.Application.Interfaces.Ai;
+using CarServiceBookingSystem.Application.Interfaces.IAi;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -8,30 +7,34 @@ namespace CarServiceBookingSystem.Infrastructure.Services.Ai;
 
 public sealed class OllamaChatProvider : IAiChatProvider
 {
-    private readonly HttpClient _httpClient;
-    private readonly AiAdvisorOptions _options;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public OllamaChatProvider(
-        HttpClient httpClient,
-        IOptions<AiAdvisorOptions> options)
+    public OllamaChatProvider(IHttpClientFactory httpClientFactory)
     {
-        _httpClient = httpClient;
-        _options = options.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<string> GetJsonChatCompletionAsync(
+        string baseUrl,
+        string model,
+        int timeoutSeconds,
         string systemPrompt,
         string userPrompt,
         CancellationToken cancellationToken = default)
     {
+        var client = _httpClientFactory.CreateClient("OllamaAiClient");
+
+        client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
+        client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
         var request = new OllamaChatRequest
         {
-            Model = _options.Model,
+            Model = model,
             Stream = false,
             Format = "json",
             Messages =
@@ -54,7 +57,7 @@ public sealed class OllamaChatProvider : IAiChatProvider
             }
         };
 
-        using var response = await _httpClient.PostAsJsonAsync(
+        using var response = await client.PostAsJsonAsync(
             "/api/chat",
             request,
             JsonOptions,

@@ -2,8 +2,6 @@
 using CarServiceBookingSystem.Application.Interfaces.Ai;
 using CarServiceBookingSystem.Application.Interfaces.IAi;
 using CarServiceBookingSystem.Application.Interfaces.IContext;
-using CarServiceBookingSystem.Application.Options;
-using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace CarServiceBookingSystem.Application.Services.Ai;
@@ -15,7 +13,7 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
     private readonly IAiConversationRepository _conversationRepository;
     private readonly IAiChatProvider _aiChatProvider;
     private readonly IAiSafetyService _safetyService;
-    private readonly AiAdvisorOptions _options;
+    private readonly IAiAdvisorRuntimeSettingsProvider _settingsProvider;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,14 +25,14 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
         IAiServiceCatalogQuery serviceCatalogQuery,
         IAiConversationRepository conversationRepository,
         IAiChatProvider aiChatProvider,
-        IOptions<AiAdvisorOptions> options,
+        IAiAdvisorRuntimeSettingsProvider settingsProvider,
         IAiSafetyService safetyService)
     {
         _currentUserService = currentUserService;
         _serviceCatalogQuery = serviceCatalogQuery;
         _conversationRepository = conversationRepository;
         _aiChatProvider = aiChatProvider;
-        _options = options.Value;
+        _settingsProvider = settingsProvider;
         _safetyService = safetyService;
     }
 
@@ -53,7 +51,11 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
             };
         }
 
-        var safetyCheck = _safetyService.CheckUserMessage(request.Message);
+        var settings = await _settingsProvider.GetSettingsAsync(cancellationToken);
+
+        var safetyCheck = _safetyService.CheckUserMessage(
+            request.Message,
+            settings);
 
         if (!safetyCheck.IsAllowed)
         {
@@ -70,7 +72,9 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
             };
         }
 
-        var sanitizedMessage = _safetyService.SanitizeUserMessage(request.Message);
+        var sanitizedMessage = _safetyService.SanitizeUserMessage(
+            request.Message,
+            settings);
 
         var conversation = await _conversationRepository.GetOrCreateConversationAsync(
             userId,
@@ -85,7 +89,7 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
             sanitizedMessage,
             cancellationToken);
 
-        if (!_options.Enabled)
+        if (!settings.Enabled)
         {
             var disabledAssistantMessage = await _conversationRepository.AddMessageAsync(
                 conversation.Id,
@@ -147,6 +151,9 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
             serviceCatalogJson);
 
         var rawAiJson = await _aiChatProvider.GetJsonChatCompletionAsync(
+            settings.BaseUrl,
+            settings.Model,
+            settings.TimeoutSeconds,
             systemPrompt,
             userPrompt,
             cancellationToken);
@@ -183,9 +190,9 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
 
         var suggestions = modelResult.SuggestedServices
             .Where(x => serviceMap.ContainsKey(x.ServiceId))
-            .Where(x => x.Confidence >= _options.MinimumRecommendationConfidence)
+            .Where(x => x.Confidence >= settings.MinimumRecommendationConfidence)
             .OrderByDescending(x => x.Confidence)
-            .Take(_options.MaxSuggestions)
+            .Take(settings.MaxSuggestions)
             .Select(x =>
             {
                 var service = serviceMap[x.ServiceId];
@@ -199,7 +206,7 @@ public sealed class AiServiceAdvisorService : IAiServiceAdvisorService
                     Reason = x.Reason,
                     Confidence = Math.Clamp(x.Confidence, 0, 1),
                     BookingUrl = string.Format(
-                        _options.BookingPathTemplate,
+                        settings.BookingPathTemplate,
                         service.Id)
                 };
             })
