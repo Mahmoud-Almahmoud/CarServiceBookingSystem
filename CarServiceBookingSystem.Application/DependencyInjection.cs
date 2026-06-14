@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
         services.AddScoped<IAiServiceAdvisorService, AiServiceAdvisorService>();
+        services.AddScoped<IAiConversationService, AiConversationService>();
 
         return services;
     }

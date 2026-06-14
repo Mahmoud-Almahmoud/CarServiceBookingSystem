@@ -27,4 +27,19 @@ public interface IAiConversationRepository
         int assistantMessageId,
         List<CreateAiRecommendationDto> recommendations,
         CancellationToken cancellationToken = default);
+
+    Task<List<AiConversationSummaryDto>> GetUserConversationsAsync(
+    string userId,
+    bool includeArchived = false,
+    CancellationToken cancellationToken = default);
+
+    Task<AiConversationDetailsDto?> GetConversationDetailsAsync(
+        string userId,
+        int conversationId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ArchiveConversationAsync(
+        string userId,
+        int conversationId,
+        CancellationToken cancellationToken = default);
 }
