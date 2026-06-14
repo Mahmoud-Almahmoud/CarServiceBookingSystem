@@ -1,5 +1,6 @@
 ﻿using CarServiceBookingSystem.Application.Interfaces.Ai;
 using CarServiceBookingSystem.Application.Interfaces.IAi;
+using Stripe;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -53,29 +54,50 @@ public sealed class OllamaChatProvider : IAiChatProvider
             Options = new OllamaRequestOptions
             {
                 Temperature = 0.2,
-                NumPredict = 800
+                NumPredict = 350
             }
         };
 
-        using var response = await client.PostAsJsonAsync(
-            "/api/chat",
-            request,
-            JsonOptions,
-            cancellationToken);
+        HttpResponseMessage response;
 
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            response = await client.PostAsJsonAsync(
+                "/api/chat",
+                request,
+                JsonOptions,
+                cancellationToken);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             throw new InvalidOperationException(
-                $"Ollama request failed with status code {(int)response.StatusCode}: {body}");
+                $"Ollama request timed out after {client.Timeout} seconds. " +
+                "Increase AiAdvisor:TimeoutSeconds, use a smaller model, or reduce the prompt size.",
+                ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new InvalidOperationException(
+                "Ollama request was canceled before it completed.",
+                ex);
         }
 
-        var result = JsonSerializer.Deserialize<OllamaChatResponse>(
-            body,
-            JsonOptions);
+        using (response)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        return result?.Message?.Content ?? string.Empty;
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Ollama request failed with status code {(int)response.StatusCode}: {body}");
+            }
+
+            var result = JsonSerializer.Deserialize<OllamaChatResponse>(
+                body,
+                JsonOptions);
+
+            return result?.Message?.Content ?? string.Empty;
+        }
     }
 
     private sealed class OllamaChatRequest
@@ -87,6 +109,7 @@ public sealed class OllamaChatProvider : IAiChatProvider
         public bool Stream { get; init; }
 
         public string Format { get; init; } = "json";
+        public string KeepAlive { get; init; } = "10m";
 
         public OllamaRequestOptions Options { get; init; } = new();
     }
