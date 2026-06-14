@@ -13,6 +13,10 @@ public sealed class AiAdvisorOptions
     public int TimeoutSeconds { get; set; } = 60;
 
     public int MaxSuggestions { get; set; } = 3;
+    public int MaxPromptLength { get; set; } = 2000;
+    public double MinimumRecommendationConfidence { get; set; } = 0.45;
+    public bool BlockUnrelatedQuestions { get; set; } = true;
+    public bool EnablePromptInjectionFilter { get; set; } = true;
 
     public string BookingPathTemplate { get; set; } = "/app/bookings/new?serviceId={0}";
 }
