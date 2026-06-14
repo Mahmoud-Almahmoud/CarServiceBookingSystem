@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<IAiServiceAdvisorService, AiServiceAdvisorService>();
         services.AddScoped<IAiConversationService, AiConversationService>();
         services.AddScoped<IAiRecommendationFeedbackService, AiRecommendationFeedbackService>();
+        services.AddScoped<IAiAnalyticsService, AiAnalyticsService>();
 
         return services;
     }
