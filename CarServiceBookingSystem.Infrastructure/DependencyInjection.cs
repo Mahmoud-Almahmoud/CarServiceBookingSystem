@@ -255,6 +255,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<IPushNotificationService, PushNotificationService>();
         services.AddScoped<INotificationBroadcastService, NotificationBroadcastService>();
+        services.AddScoped<IAiServiceCatalogQuery, AiServiceCatalogQuery>();
 
         return services;
     }
