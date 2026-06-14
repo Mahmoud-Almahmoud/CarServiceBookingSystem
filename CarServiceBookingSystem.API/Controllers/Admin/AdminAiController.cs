@@ -16,12 +16,15 @@ public sealed class AdminAiController : ControllerBase
 {
     private readonly IAiAnalyticsService _analyticsService;
     private readonly IAiAdvisorSettingsService _settingsService;
+    private readonly IAiProviderStatusService _statusService;
 
     public AdminAiController(IAiAnalyticsService analyticsService,
-        IAiAdvisorSettingsService settingsService)
+        IAiAdvisorSettingsService settingsService,
+        IAiProviderStatusService statusService)
     {
         _analyticsService = analyticsService;
         _settingsService = settingsService;
+        _statusService = statusService;
     }
 
     [HttpGet("analytics/overview")]
@@ -82,5 +85,15 @@ public sealed class AdminAiController : ControllerBase
             cancellationToken);
 
         return Ok(ApiResponse<AiAdvisorSettingsDto>.Ok(result));
+    }
+
+    [HttpGet("status")]
+    [ProducesResponseType(typeof(ApiResponse<AiProviderStatusDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AiProviderStatusDto>>> GetStatus(
+    CancellationToken cancellationToken)
+    {
+        var result = await _statusService.GetStatusAsync(cancellationToken);
+
+        return Ok(ApiResponse<AiProviderStatusDto>.Ok(result));
     }
 }

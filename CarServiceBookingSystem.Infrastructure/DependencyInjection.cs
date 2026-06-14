@@ -195,6 +195,16 @@ public static class DependencyInjection
         services.AddHttpClient("OllamaAiClient");
         services.AddScoped<IAiChatProvider, OllamaChatProvider>();
 
+        services.AddHttpClient<IAiProviderStatusProvider, OllamaProviderStatusProvider>((serviceProvider, client) =>
+        {
+            var options = serviceProvider
+                .GetRequiredService<IOptions<AiAdvisorOptions>>()
+                .Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(Math.Min(options.TimeoutSeconds, 15));
+        });
+
         StripeConfiguration.ApiKey = stripSettings?.SecretKey ?? configuration["StripeSettings:SecretKey"];
 
         services.AddMemoryCache();

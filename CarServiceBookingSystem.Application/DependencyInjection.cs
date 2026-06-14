@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IAiAnalyticsService, AiAnalyticsService>();
         services.AddScoped<IAiSafetyService, AiSafetyService>();
         services.AddScoped<IAiAdvisorSettingsService, AiAdvisorSettingsService>();
+        services.AddScoped<IAiProviderStatusService, AiProviderStatusService>();
 
         return services;
     }
