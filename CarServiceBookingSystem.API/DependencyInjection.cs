@@ -31,7 +31,7 @@ namespace CarServiceBookingSystem.API
             services.AddApiVersioning(options =>
             {
                 options.DefaultApiVersion = new ApiVersion(1, 0);
-                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.AssumeDefaultVersionWhenUnspecified = false;
                 options.ReportApiVersions = true;
 
                 options.ApiVersionReader = new UrlSegmentApiVersionReader();
@@ -121,7 +121,7 @@ namespace CarServiceBookingSystem.API
                         []
                     }
                 });
-                        });
+            });
 
             if (!environment.IsEnvironment("Testing"))
             {

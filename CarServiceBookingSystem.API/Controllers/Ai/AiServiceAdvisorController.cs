@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace CarServiceBookingSystem.API.Controllers.Ai;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/ai/service-advisor")]
 [ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/ai/service-advisor")]
 [Authorize]
 public sealed class AiServiceAdvisorController : ControllerBase
 {

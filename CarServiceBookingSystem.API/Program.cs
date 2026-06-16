@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 using CarServiceBookingSystem.API;
 using CarServiceBookingSystem.API.BackgroundJobs;
 using CarServiceBookingSystem.API.Filters;
@@ -167,18 +168,21 @@ if (!app.Environment.IsEnvironment("Testing"))
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseSerilogRequestLogging();
-
-//if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") )
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
 app.UseMiddleware<SwaggerBasicAuthMiddleware>();
+
+var apiVersionDescriptionProvider =
+    app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Car Service Booking System API v1");
-    options.RoutePrefix = "swagger";
+    foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+    {
+        options.SwaggerEndpoint(
+            $"/swagger/{description.GroupName}/swagger.json",
+            $"Car Service Booking API {description.GroupName.ToUpperInvariant()}");
+        options.RoutePrefix = "swagger";
+    }
 });
 
 app.UseHttpsRedirection();
